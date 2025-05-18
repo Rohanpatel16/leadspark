@@ -1,0 +1,22 @@
+{
+  "name": "leadspark",
+  "version": "1.0.0",
+  "description": "LeadSpark - Email Finding and Verification Tool",
+  "main": "index.html",
+  "scripts": {
+    "start": "serve .",
+    "dev": "serve -l 5000 ."
+  },
+  "keywords": [
+    "email",
+    "finder",
+    "verifier",
+    "validation",
+    "lead-generation"
+  ],
+  "author": "LeadSpark Team",
+  "license": "MIT",
+  "devDependencies": {
+    "serve": "^14.2.0"
+  }
+} 
