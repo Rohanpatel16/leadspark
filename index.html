@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LeadSpark - All-in-One</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Arima+Madurai:wght@400;700;900&family=Corben:wght@400;700&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- External CSS -->
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="container navbar-container">
+            <a href="javascript:showPage('home-page-content');" class="navbar-brand">LeadSpark</a>
+            <button class="navbar-toggler" aria-label="Toggle navigation" aria-expanded="false">
+                <span>☰</span> <!-- Hamburger Icon -->
+            </button>
+            <ul class="navbar-nav">
+                <li><a href="javascript:showPage('home-page-content');" data-page="home-page-content" class="nav-link">Home</a></li> 
+                <li><a href="javascript:showPage('email-finder-page-content');" data-page="email-finder-page-content" class="nav-link">Email Finder</a></li>
+                <li><a href="javascript:showPage('email-verifier-page-content');" data-page="email-verifier-page-content" class="nav-link">Email Verifier</a></li>
+                <li><a href="javascript:showPage('dashboard-page-content');" data-page="dashboard-page-content" class="nav-link">Dashboard</a></li> 
+                <li><a href="javascript:showPage('validation-log-page-content');" data-page="validation-log-page-content" class="nav-link">Validation Log</a></li>
+                <li><a href="javascript:showPage('settings-page-content');" data-page="settings-page-content" class="nav-link">Settings</a></li>
+                <li>
+                    <button class="theme-toggle-btn" id="themeToggle" aria-label="Toggle theme">
+                        ☀️ <!-- JS will set initial icon -->
+                    </button>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+    <main>
+        <!-- Home Page Content -->
+        <div id="home-page-content" class="page-content">
+            <header class="page-header home-header"> 
+                <div class="container">
+                    <h1>Welcome to Your LeadSpark Home!</h1> 
+                    <p>Quickly access your email tools and manage your leads.</p>
+                </div>
+            </header>
+
+            <section id="tool-access" class="tool-access-section section">
+                <div class="container">
+                    <h2>Your Tools</h2>
+                    <div class="tool-cards-grid">
+                        <div class="tool-card">
+                            <h3><span style="color: var(--color-primary);">🚀</span> Email Finder</h3>
+                            <p>Discover targeted email addresses from company domains or professional names to expand your outreach.</p>
+                            <div class="form-group">
+                                <input type="text" class="form-input" placeholder="Enter domain or name (e.g., company.com)">
+                            </div>
+                            <a href="javascript:showPage('email-finder-page-content');" class="btn btn-primary home-launch-finder">Launch Email Finder</a>
+                        </div>
+                        <div class="tool-card">
+                            <h3><span style="color: var(--color-accent);">✔️</span> Email Verifier</h3>
+                            <p>Ensure deliverability and reduce bounce rates by verifying individual emails or entire lists.</p>
+                            <div class="form-group">
+                                <input type="email" class="form-input" placeholder="Enter email to verify (e.g., name@example.com)">
+                            </div>
+                            <a href="javascript:showPage('email-verifier-page-content');" class="btn btn-secondary home-launch-verifier">Launch Email Verifier</a>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="recent-activity" class="recent-activity-section section">
+                <div class="container">
+                    <h2>Recent Activity</h2>
+                    <div class="activity-item">
+                        <p><strong>Searched:</strong> coolcompany.com (5 emails found)</p>
+                        <span class="timestamp">2 hours ago</span>
+                    </div>
+                    <div class="activity-item">
+                        <p><strong>Verified:</strong> contact@example.org (Status: Valid)</p>
+                        <span class="timestamp">Yesterday</span>
+                    </div>
+                    <div class="activity-item">
+                        <p><strong>Exported:</strong> "Tech Leads Q3" list</p>
+                        <span class="timestamp">3 days ago</span>
+                    </div>
+                    <p class="text-center" style="margin-top: 2rem;"><a href="javascript:showPage('validation-log-page-content');" id="homeViewAllActivityLink">View All Activity →</a></p>
+                </div>
+            </section>
+        </div>
+
+        <!-- Email Finder Page Content -->
+        <div id="email-finder-page-content" class="page-content">
+            <header class="page-header tool-page-header"> 
+                <div class="container">
+                    <h1><span style="color: var(--color-primary);">💡</span> Email Permutator & Finder</h1> 
+                    <p>Generate and check potential email addresses for your contacts using validate.email API.</p>
+                </div>
+            </header>
+
+            <section id="email-finder-tool" class="section">
+                <div class="container">
+                    <form class="form-section finder-form-section" id="bulkFinderForm">
+                        <div class="form-group">
+                            <label for="finder-domain" class="form-label">Company Domain</label>
+                            <input type="text" id="finder-domain" name="finder-domain" class="form-input" placeholder="e.g., company.com" required>
+                            <p class="form-note">Enter the website domain of the company.</p>
+                        </div>
+                        <div class="form-group">
+                            <label for="finder-names" class="form-label">Names (One per line: First Last)</label>
+                            <textarea id="finder-names" name="finder-names" class="form-textarea" rows="5" placeholder="e.g.,
+Rohan Patel
+Jane Doe
+David Lee" required></textarea>
+                            <p class="form-note">Enter full names. Each name on a new line.</p>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Generate & Check Emails</button>
+                    </form>
+
+                    <div class="results-section">
+                        <h2>
+                            Results 
+                            <button class="btn btn-secondary btn-copy" id="copyAllValidButton" data-original-text='Copy All "Valid" Emails' style="display:none;">Copy All "Valid" Emails</button>
+                        </h2>
+                        <div id="finder-results-area">
+                            <div class="results-placeholder" id="results-initial-placeholder">
+                                <p>Enter a domain and list of names above, then click "Generate & Check Emails" to see results here.</p>
+                            </div>
+                            <table class="results-table" id="resultsTable" style="display: none;">
+                                <thead>
+                                    <tr>
+                                        <th>Name Searched</th>
+                                        <th>"Validated" Emails (via API)</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="resultsTableBody">
+                                    <!-- JS will populate this -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Email Verifier Page Content -->
+        <div id="email-verifier-page-content" class="page-content">
+            <header class="page-header tool-page-header"> 
+                <div class="container">
+                    <h1><span style="color: var(--color-secondary);">✔️</span> Email Verifier</h1> 
+                    <p>Check the validity of email addresses using validate.email API.</p>
+                </div>
+            </header>
+
+            <section id="email-verifier-tool" class="section">
+                <div class="container">
+                    <form class="form-section verifier-form-section" id="bulkVerifierForm">
+                        <div class="form-group">
+                            <label for="verifier-emails" class="form-label">Emails to Verify (One per line)</label>
+                            <textarea id="verifier-emails" name="verifier-emails" class="form-textarea" rows="8" placeholder="e.g.,
+test@example.com
+another@domain.co
+invalid-email" required></textarea>
+                            <p class="form-note">Paste your list of email addresses here. Each email on a new line.</p>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Verify Emails</button>
+                    </form>
+
+                    <div class="results-section">
+                        <h2>
+                            Verification Results
+                            <button class="btn btn-secondary btn-copy" id="copyValidVerifiedButton" data-original-text="Copy Valid Only" style="display:none;">Copy Valid Only</button>
+                        </h2>
+                        <div id="verifier-results-area">
+                            <div class="results-placeholder" id="verifier-results-initial-placeholder">
+                                <p>Enter a list of emails above and click "Verify Emails" to see results here.</p>
+                            </div>
+                            <table class="results-table" id="verifierResultsTable" style="display: none;">
+                                <thead>
+                                    <tr>
+                                        <th>Email Address</th>
+                                        <th>Status</th>
+                                        <th>Details (from API)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="verifierResultsTableBody">
+                                    <!-- JS will populate this -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Dashboard Page Content -->
+        <div id="dashboard-page-content" class="page-content">
+             <header class="page-header dashboard-page-header"> 
+                <div class="container">
+                    <h1>Your LeadSpark Dashboard</h1> 
+                    <p>Overview of your email finding and verification activities.</p>
+                </div>
+            </header>
+
+            <section id="dashboard-content" class="section">
+                <div class="container">
+                    <div class="stats-grid">
+                        <div class="stat-card primary">
+                            <span class="stat-card-value" id="statTotalFound">0</span>
+                            <span class="stat-card-label">Total Emails Found (Session)</span>
+                        </div>
+                        <div class="stat-card secondary">
+                            <span class="stat-card-value" id="statTotalVerified">0</span>
+                            <span class="stat-card-label">Total Emails Verified (Log)</span>
+                        </div>
+                        <div class="stat-card accent">
+                            <span class="stat-card-value" id="statValidEmails">0</span>
+                            <span class="stat-card-label">Valid Emails (Log)</span>
+                        </div>
+                        <div class="stat-card primary">
+                            <span class="stat-card-value" id="statRiskyEmails">0</span>
+                            <span class="stat-card-label">Risky Emails (Log)</span>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-content-grid">
+                        <div class="dashboard-panel">
+                            <h3>
+                                Recently Found Valid Emails
+                                <button class="btn btn-sm btn-secondary btn-copy" id="copyDisplayedValidButton" data-original-text="Copy Displayed" style="display:none;">Copy Displayed</button>
+                            </h3>
+                            <div id="dashboardValidEmailsListContainer">
+                                <p id="noValidEmailsMessage">No recently found valid emails to display from verifier.</p>
+                                <ul class="valid-emails-display-list" id="dashboardValidEmailsList" style="display:none;">
+                                    <!-- JS will populate this -->
+                                </ul>
+                            </div>
+                             <button class="btn btn-sm btn-primary" id="clearStoredEmailsButton" style="margin-top:1rem; display:none;">Clear Stored Valid Emails</button>
+                        </div>
+
+                        <div class="dashboard-panel">
+                            <h3>Recent Activity (Log Summary)</h3>
+                             <ul class="activity-list" id="recentActivityList">
+                                 <!-- JS will populate this from log -->
+                                 <li class="activity-item" id="noRecentActivityMessageDashboard"><p>No recent verification activity logged.</p></li>
+                            </ul>
+                            <p style="margin-top: 1rem; text-align:right;"><a href="javascript:showPage('validation-log-page-content');" class="btn btn-sm btn-secondary dashboard-view-all-activity">View Full Log</a></p>
+                        </div>
+
+                        <div class="dashboard-panel">
+                            <h3>Quick Links</h3>
+                            <ul class="quick-links-list">
+                                <li><a href="javascript:showPage('email-finder-page-content');" class="dashboard-ql-finder">🚀 Go to Email Finder</a></li>
+                                <li><a href="javascript:showPage('email-verifier-page-content');" class="dashboard-ql-verifier">✔️ Go to Email Verifier</a></li>
+                                <li><a href="#reports">📊 View Reports (Coming Soon)</a></li>
+                                <li><a href="#settings">⚙️ Account Settings (Coming Soon)</a></li>
+                            </ul>
+                        </div>
+
+                        <div class="dashboard-panel">
+                            <h3>Verification Stats (Placeholder)</h3>
+                            <div class="chart-placeholder">
+                                <p>Chart: Verification Status Breakdown</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Validated Emails Log Page Content -->
+        <div id="validation-log-page-content" class="page-content">
+            <header class="page-header tool-page-header"> 
+                <div class="container">
+                    <h1><span style="color: var(--color-accent);">🗂️</span> Validated Emails Log</h1> 
+                    <p>A complete history of your email verification activities.</p>
+                </div>
+            </header>
+
+            <section id="validation-log-content" class="section">
+                <div class="container">
+                    <div class="results-section">
+                        <div class="log-controls">
+                            <div>
+                                <label for="statusFilter">Filter by Status:</label>
+                                <select id="statusFilter">
+                                    <option value="all">All Statuses</option>
+                                    <option value="Valid">Valid</option>
+                                    <option value="Invalid">Invalid</option>
+                                    <option value="Risky">Risky</option>
+                                    <option value="Unknown">Unknown</option>
+                                </select>
+                            </div>
+                            <div>
+                                <button class="btn btn-sm btn-secondary btn-copy" id="copyLogButton" data-original-text="Copy Displayed Log" style="display:none;">Copy Displayed Log</button>
+                                <button class="btn btn-sm btn-danger" id="clearLogButton" style="margin-left: 0.5rem;">Clear Entire Log</button>
+                            </div>
+                        </div>
+
+                        <div id="validation-log-area">
+                            <div class="results-placeholder" id="log-initial-placeholder">
+                                <p>Your verification log will appear here. Verify some emails to get started!</p>
+                            </div>
+                            <table class="results-table" id="validationLogTable" style="display: none;">
+                                <thead>
+                                    <tr>
+                                        <th data-sort="email">Email Address</th>
+                                        <th data-sort="status">Status</th>
+                                        <th data-sort="detail">Details</th>
+                                        <th data-sort="timestamp">Date Verified</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="validationLogTableBody">
+                                    <!-- JS will populate this -->
+                                </tbody>
+                            </table>
+                             <p id="logCount" style="text-align: right; margin-top: 1rem; font-size: 0.9em; color: var(--color-text-muted);"></p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Settings Page Content -->
+    <div id="settings-page-content" class="page-content">
+        <header class="page-header tool-page-header"> 
+            <div class="container">
+                <h1><span style="color: var(--color-secondary);">⚙️</span> API Settings</h1> 
+                <p>Configure API settings for email validation services.</p>
+            </div>
+        </header>
+
+        <section id="settings-content" class="section">
+            <div class="container">
+                <form class="form-section" id="apiSettingsForm">
+                    <h3 style="margin-bottom: 1.5rem; color: var(--color-primary);">Email Validation API Settings</h3>
+                    
+                    <div class="form-group">
+                        <label class="form-label">API Provider</label>
+                        <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1rem;">
+                            <div>
+                                <input type="radio" id="api-provider-validate-email" name="api-provider" value="validate-email">
+                                <label for="api-provider-validate-email">validate.email - Detailed validation (https://api.validate.email/validate)</label>
+                            </div>
+                            <div>
+                                <input type="radio" id="api-provider-bazzigate" name="api-provider" value="bazzigate" checked>
+                                <label for="api-provider-bazzigate">Bazzigate - Simple validation (https://emailverifiers-backend.bazzigate.com)</label>
+                            </div>
+                            <div>
+                                <input type="radio" id="api-provider-supersend" name="api-provider" value="supersend">
+                                <label for="api-provider-supersend">SuperSend - Balanced validation (https://api.supersend.io/v1/verify-email)</label>
+                            </div>
+                        </div>
+                        <p class="form-note">Select which API provider to use for email validation.</p>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="api-url" class="form-label">API Endpoint URL</label>
+                        <input type="url" id="api-url" name="api-url" class="form-input" placeholder="https://emailverifiers-backend.bazzigate.com/single-email-varification">
+                        <p class="form-note">The base URL for the email validation API. Will update when you change providers.</p>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="api-key" class="form-label">API Key</label>
+                        <input type="text" id="api-key" name="api-key" class="form-input" placeholder="Enter your API key if required">
+                        <p class="form-note">Leave blank if your API doesn't require authentication.</p>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="max-parallel-requests" class="form-label">Max Parallel Requests</label>
+                        <input type="number" id="max-parallel-requests" name="max-parallel-requests" class="form-input" min="1" max="100" placeholder="50">
+                        <p class="form-note">Maximum number of parallel API requests to make at once.</p>
+                    </div>
+
+                    <hr style="margin: 2rem 0; border: none; border-top: 1px solid var(--color-border);">
+                    
+                    <h3 style="margin-bottom: 1.5rem; color: var(--color-secondary);">Email Finder Settings</h3>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Email Patterns to Generate</label>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 0.5rem;">
+                            <div>
+                                <input type="checkbox" id="pattern-first" name="email-patterns" value="first" checked>
+                                <label for="pattern-first">first@domain.com</label>
+                            </div>
+                            <div>
+                                <input type="checkbox" id="pattern-last" name="email-patterns" value="last" checked>
+                                <label for="pattern-last">last@domain.com</label>
+                            </div>
+                            <div>
+                                <input type="checkbox" id="pattern-firstlast" name="email-patterns" value="firstlast" checked>
+                                <label for="pattern-firstlast">firstlast@domain.com</label>
+                            </div>
+                            <div>
+                                <input type="checkbox" id="pattern-lastfirst" name="email-patterns" value="lastfirst">
+                                <label for="pattern-lastfirst">lastfirst@domain.com</label>
+                            </div>
+                            <div>
+                                <input type="checkbox" id="pattern-first-dot-last" name="email-patterns" value="first.last" checked>
+                                <label for="pattern-first-dot-last">first.last@domain.com</label>
+                            </div>
+                            <div>
+                                <input type="checkbox" id="pattern-last-dot-first" name="email-patterns" value="last.first">
+                                <label for="pattern-last-dot-first">last.first@domain.com</label>
+                            </div>
+                            <div>
+                                <input type="checkbox" id="pattern-first-underscore-last" name="email-patterns" value="first_last" checked>
+                                <label for="pattern-first-underscore-last">first_last@domain.com</label>
+                            </div>
+                            <div>
+                                <input type="checkbox" id="pattern-last-underscore-first" name="email-patterns" value="last_first">
+                                <label for="pattern-last-underscore-first">last_first@domain.com</label>
+                            </div>
+                            <div>
+                                <input type="checkbox" id="pattern-first-dash-last" name="email-patterns" value="first-last" checked>
+                                <label for="pattern-first-dash-last">first-last@domain.com</label>
+                            </div>
+                            <div>
+                                <input type="checkbox" id="pattern-last-dash-first" name="email-patterns" value="last-first">
+                                <label for="pattern-last-dash-first">last-first@domain.com</label>
+                            </div>
+                            <div>
+                                <input type="checkbox" id="pattern-firstinitial-last" name="email-patterns" value="flast" checked>
+                                <label for="pattern-firstinitial-last">flast@domain.com</label>
+                            </div>
+                            <div>
+                                <input type="checkbox" id="pattern-firstinitial-dot-last" name="email-patterns" value="f.last" checked>
+                                <label for="pattern-firstinitial-dot-last">f.last@domain.com</label>
+                            </div>
+                            <div>
+                                <input type="checkbox" id="pattern-first-lastinitial" name="email-patterns" value="first.l" checked>
+                                <label for="pattern-first-lastinitial">first.l@domain.com</label>
+                            </div>
+                            <div>
+                                <input type="checkbox" id="pattern-firstinitial-lastinitial" name="email-patterns" value="fl" checked>
+                                <label for="pattern-firstinitial-lastinitial">fl@domain.com</label>
+                            </div>
+                        </div>
+                        <p class="form-note">Select which email patterns to generate when using the Email Finder tool. Only checked patterns will be generated and verified.</p>
+                    </div>
+
+                    <div class="form-group">
+                        <button type="button" id="select-all-patterns" class="btn btn-sm btn-secondary" style="margin-right: 0.5rem;">Select All</button>
+                        <button type="button" id="deselect-all-patterns" class="btn btn-sm btn-secondary">Deselect All</button>
+                    </div>
+
+                    <hr style="margin: 2rem 0; border: none; border-top: 1px solid var(--color-border);">
+
+                    <div class="form-group">
+                        <button type="submit" class="btn btn-primary">Save Settings</button>
+                        <button type="button" id="reset-default-settings" class="btn btn-secondary" style="margin-top: 1rem;">Reset to Defaults</button>
+                    </div>
+                </form>
+
+                <div class="results-section" style="margin-top: 2rem;">
+                    <h2>Testing</h2>
+                    <div class="form-group">
+                        <label for="test-email" class="form-label">Test Email Validation</label>
+                        <div style="display: flex; gap: 1rem;">
+                            <input type="email" id="test-email" class="form-input" placeholder="Enter an email to test API" style="flex: 1;">
+                            <button type="button" id="test-api-btn" class="btn btn-secondary">Test API</button>
+                        </div>
+                    </div>
+                    <div id="test-results" style="margin-top: 1rem; padding: 1rem; border: 1px solid var(--color-border); border-radius: var(--border-radius-sm); background-color: var(--color-bg-alt); display: none;">
+                        <pre id="test-results-content" style="margin: 0; white-space: pre-wrap; font-size: 0.9rem; font-family: monospace;"></pre>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <a href="javascript:showPage('home-page-content');" class="navbar-brand">LeadSpark</a>
+            <p>© <span id="currentYear"></span> LeadSpark Tools. Your personal email toolkit.</p>
+            <p><a href="#privacy">Privacy Policy</a> | <a href="#terms">Terms of Service</a></p>
+        </div>
+    </footer>
+
+    <!-- External JavaScript - Using modules -->
+    <script type="module" src="js/app.js"></script>
+</body>
+</html>
