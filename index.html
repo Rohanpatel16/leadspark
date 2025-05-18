@@ -8,9 +8,6 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Arima+Madurai:wght@400;700;900&family=Corben:wght@400;700&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
-    
-    <!-- Supabase JS v2 -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <style>
         /* CSS Reset and Basic Setup */
@@ -1434,9 +1431,6 @@ invalid-email" required></textarea>
                     
                     const resultsByFullName = {};
                     namesArray.forEach(name => resultsByFullName[name] = []);
-                    
-                    // For storing in Supabase
-                    let supabaseSavePromises = [];
 
                     apiValidationResults.forEach(apiRes => {
                         const matchingNameEntries = totalPermutationsToProcess.filter(p => p.email === apiRes.email);
@@ -1447,30 +1441,10 @@ invalid-email" required></textarea>
                                 }
                                 if (!allFoundValidEmailsAcrossSearch.includes(apiRes.email)) {
                                     allFoundValidEmailsAcrossSearch.push(apiRes.email);
-                                    
-                                    // Store valid email in Supabase
-                                    supabaseSavePromises.push(
-                                        storeEmailInSupabase(
-                                            apiRes.email, 
-                                            'Valid', 
-                                            `Found for ${entry.name} at ${domain}`,
-                                            'finder'
-                                        )
-                                    );
                                 }
                             }
                         });
                     });
-                    
-                    // Wait for all Supabase saves to complete
-                    try {
-                        if (supabaseSavePromises.length > 0) {
-                            await Promise.allSettled(supabaseSavePromises);
-                            console.log(`${supabaseSavePromises.length} valid emails saved to Supabase from finder`);
-                        }
-                    } catch (err) {
-                        console.error('Error saving finder results to Supabase:', err);
-                    }
                     
                     for (const fullName of namesArray) {
                         const validEmailsForThisName = resultsByFullName[fullName] || [];
@@ -1503,7 +1477,6 @@ invalid-email" required></textarea>
                     resultsInitialPlaceholder.style.display = 'none'; resultsTable.style.display = 'table'; 
                     if(allFoundValidEmailsAcrossSearch.length > 0) { copyAllValidButton.style.display = 'inline-block'; }
                     if (typeof dashboard_updateStats === 'function') dashboard_updateStats(); 
-                    if (typeof dashboard_loadAndDisplayValidEmails === 'function') dashboard_loadAndDisplayValidEmails();
                 });
             }
             if(copyAllValidButton) {
@@ -1582,15 +1555,11 @@ invalid-email" required></textarea>
 
                     const verificationResults = await actualVerifyBatchEmails(emailsArray);
                     
-                    // Store in localStorage as fallback
                     let currentLog = JSON.parse(localStorage.getItem('leadSparkVerificationLog') || '[]');
                     currentLog.unshift(...verificationResults); 
                     localStorage.setItem('leadSparkVerificationLog', JSON.stringify(currentLog));
 
                     let currentGlobalValidEmails = JSON.parse(localStorage.getItem('leadSparkAllValidEmails') || '[]');
-                    
-                    // Store each result in Supabase
-                    let supabaseSavePromises = [];
                     
                     verificationResults.forEach(result => {
                         const row = verifierResultsTableBody.insertRow();
@@ -1599,29 +1568,13 @@ invalid-email" required></textarea>
                         const statusSpan = document.createElement('span'); statusSpan.textContent = result.status;
                         statusSpan.className = `status-${result.status.toLowerCase()}`; statusCell.appendChild(statusSpan);
                         row.insertCell().textContent = result.detail;
-                        
-                        // Add to valid emails list if valid
                         if (result.status === 'Valid') {
                             allVerifiedValidEmailsFromCurrentBatch.push(result.email);
                             if (!currentGlobalValidEmails.includes(result.email)) { 
                                 currentGlobalValidEmails.push(result.email);
                             }
                         }
-                        
-                        // Store in Supabase
-                        supabaseSavePromises.push(
-                            storeEmailInSupabase(result.email, result.status, result.detail, 'verifier')
-                        );
                     });
-                    
-                    // Wait for all Supabase saves to complete
-                    try {
-                        await Promise.allSettled(supabaseSavePromises);
-                        console.log('All verification results saved to Supabase');
-                    } catch (err) {
-                        console.error('Error saving verification results to Supabase:', err);
-                    }
-                    
                     localStorage.setItem('leadSparkAllValidEmails', JSON.stringify(currentGlobalValidEmails));
 
                     verifierResultsInitialPlaceholder.style.display = 'none'; verifierResultsTable.style.display = 'table';
@@ -1659,60 +1612,20 @@ invalid-email" required></textarea>
 
             if (dashboard_dashboardValidEmailsList && dashboard_noValidEmailsMessage && dashboard_copyDisplayedValidButton && dashboard_clearStoredEmailsButton) {
                 dashboard_dashboardValidEmailsList.innerHTML = ''; 
-                
-                // Try loading from Supabase first
-                getAllVerifiedEmails().then(supabaseEmails => {
-                    if (supabaseEmails && supabaseEmails.length > 0) {
-                        // Use Supabase data
-                        const emailsToDisplay = supabaseEmails.slice(0, 20); // Get the first 20 (already sorted by timestamp desc)
-                        emailsToDisplay.forEach(emailObj => {
-                            const li = document.createElement('li'); 
-                            li.textContent = emailObj.email;
-                            dashboard_dashboardValidEmailsList.appendChild(li);
-                            dashboard_displayedValidEmails.push(emailObj.email); 
-                        });
-                        
-                        dashboard_dashboardValidEmailsList.style.display = 'block'; 
-                        dashboard_noValidEmailsMessage.style.display = 'none';
-                        dashboard_copyDisplayedValidButton.style.display = 'inline-block'; 
-                        dashboard_clearStoredEmailsButton.style.display = 'inline-block';
-                        return;
-                    }
-                    
-                    // Fallback to localStorage if Supabase failed or returned no data
-                    const storedEmails = storedEmailsJSON ? JSON.parse(storedEmailsJSON) : [];
-                    if (storedEmails.length > 0) {
-                        const emailsToDisplay = storedEmails.slice(-20).reverse(); 
-                        emailsToDisplay.forEach(email => {
-                            const li = document.createElement('li'); li.textContent = email;
-                            dashboard_dashboardValidEmailsList.appendChild(li);
-                            dashboard_displayedValidEmails.push(email); 
-                        });
-                        dashboard_dashboardValidEmailsList.style.display = 'block'; dashboard_noValidEmailsMessage.style.display = 'none';
-                        dashboard_copyDisplayedValidButton.style.display = 'inline-block'; dashboard_clearStoredEmailsButton.style.display = 'inline-block';
-                    } else {
-                        dashboard_dashboardValidEmailsList.style.display = 'none'; dashboard_noValidEmailsMessage.style.display = 'block';
-                        dashboard_copyDisplayedValidButton.style.display = 'none'; dashboard_clearStoredEmailsButton.style.display = 'none';
-                    }
-                }).catch(err => {
-                    console.error("Error fetching verified emails from Supabase:", err);
-                    
-                    // Fallback to localStorage
-                    const storedEmails = storedEmailsJSON ? JSON.parse(storedEmailsJSON) : [];
-                    if (storedEmails.length > 0) {
-                        const emailsToDisplay = storedEmails.slice(-20).reverse(); 
-                        emailsToDisplay.forEach(email => {
-                            const li = document.createElement('li'); li.textContent = email;
-                            dashboard_dashboardValidEmailsList.appendChild(li);
-                            dashboard_displayedValidEmails.push(email); 
-                        });
-                        dashboard_dashboardValidEmailsList.style.display = 'block'; dashboard_noValidEmailsMessage.style.display = 'none';
-                        dashboard_copyDisplayedValidButton.style.display = 'inline-block'; dashboard_clearStoredEmailsButton.style.display = 'inline-block';
-                    } else {
-                        dashboard_dashboardValidEmailsList.style.display = 'none'; dashboard_noValidEmailsMessage.style.display = 'block';
-                        dashboard_copyDisplayedValidButton.style.display = 'none'; dashboard_clearStoredEmailsButton.style.display = 'none';
-                    }
-                });
+                const storedEmails = storedEmailsJSON ? JSON.parse(storedEmailsJSON) : [];
+                if (storedEmails.length > 0) {
+                    const emailsToDisplay = storedEmails.slice(-20).reverse(); 
+                    emailsToDisplay.forEach(email => {
+                        const li = document.createElement('li'); li.textContent = email;
+                        dashboard_dashboardValidEmailsList.appendChild(li);
+                        dashboard_displayedValidEmails.push(email); 
+                    });
+                    dashboard_dashboardValidEmailsList.style.display = 'block'; dashboard_noValidEmailsMessage.style.display = 'none';
+                    dashboard_copyDisplayedValidButton.style.display = 'inline-block'; dashboard_clearStoredEmailsButton.style.display = 'inline-block';
+                } else {
+                    dashboard_dashboardValidEmailsList.style.display = 'none'; dashboard_noValidEmailsMessage.style.display = 'block';
+                    dashboard_copyDisplayedValidButton.style.display = 'none'; dashboard_clearStoredEmailsButton.style.display = 'none';
+                }
             }
         }
         if (dashboard_copyDisplayedValidButton) {
@@ -1729,146 +1642,51 @@ invalid-email" required></textarea>
         }
         if (dashboard_clearStoredEmailsButton) {
             dashboard_clearStoredEmailsButton.addEventListener('click', () => {
-                if (confirm('Are you sure you want to clear all stored valid emails? This cannot be undone.')) {
-                    // Clear from localStorage (keep as fallback)
+                if (confirm('Are you sure you want to clear all stored valid emails from the verifier? This cannot be undone.')) {
                     localStorage.removeItem('leadSparkAllValidEmails');
-                    
-                    // Clear all valid emails from Supabase
-                    clearAllEmails().then(success => {
-                        if (success) {
-                            console.log('Successfully cleared all emails from Supabase');
-                        } else {
-                            console.error('Failed to clear emails from Supabase');
-                        }
-                        
-                        dashboard_loadAndDisplayValidEmails();
-                        dashboard_updateStats();
-                        alert('Stored valid emails have been cleared.');
-                    }).catch(err => {
-                        console.error('Error clearing emails from Supabase:', err);
-                        dashboard_loadAndDisplayValidEmails();
-                        dashboard_updateStats();
-                        alert('There was an error clearing emails from the database. Local storage was cleared successfully.');
-                    });
+                    dashboard_loadAndDisplayValidEmails(); 
+                    dashboard_updateStats(); 
+                    alert('Stored valid emails have been cleared.'); // Keep alert for destructive actions
                 }
             });
         }
         function dashboard_updateStats() {
-            // Try getting stats from Supabase first
-            getEmailStats().then(stats => {
-                if (stats) {
-                    document.getElementById('statTotalVerified').textContent = stats.total;
-                    document.getElementById('statValidEmails').textContent = stats.valid;
-                    document.getElementById('statRiskyEmails').textContent = stats.risky;
-                    return;
-                }
-                
-                // Fallback to localStorage if Supabase failed
-                const logData = JSON.parse(localStorage.getItem('leadSparkVerificationLog') || '[]');
-                document.getElementById('statTotalVerified').textContent = logData.length;
-                document.getElementById('statValidEmails').textContent = logData.filter(e => e.status === 'Valid').length;
-                document.getElementById('statRiskyEmails').textContent = logData.filter(e => e.status === 'Risky').length;
-            }).catch(err => {
-                console.error('Error getting stats from Supabase:', err);
-                
-                // Fallback to localStorage
-                const logData = JSON.parse(localStorage.getItem('leadSparkVerificationLog') || '[]');
-                document.getElementById('statTotalVerified').textContent = logData.length;
-                document.getElementById('statValidEmails').textContent = logData.filter(e => e.status === 'Valid').length;
-                document.getElementById('statRiskyEmails').textContent = logData.filter(e => e.status === 'Risky').length;
-            });
+            const logData = JSON.parse(localStorage.getItem('leadSparkVerificationLog') || '[]');
+            document.getElementById('statTotalVerified').textContent = logData.length;
+            document.getElementById('statValidEmails').textContent = logData.filter(e => e.status === 'Valid').length;
+            document.getElementById('statRiskyEmails').textContent = logData.filter(e => e.status === 'Risky').length;
         }
-        function dashboard_loadRecentActivity() {
+         function dashboard_loadRecentActivity() {
             const recentActivityList = document.getElementById('recentActivityList');
             const noActivityMessage = document.getElementById('noRecentActivityMessageDashboard');
             if (!recentActivityList || !noActivityMessage) return;
-            
+
+            const logData = JSON.parse(localStorage.getItem('leadSparkVerificationLog') || '[]');
             recentActivityList.innerHTML = ''; 
+
+            if (logData.length === 0) {
+                 recentActivityList.appendChild(noActivityMessage.cloneNode(true)); 
+                 noActivityMessage.style.display = 'none'; 
+                 recentActivityList.querySelector('#noRecentActivityMessageDashboard').style.display = 'list-item';
+                 return;
+            }
+            if(recentActivityList.querySelector('#noRecentActivityMessageDashboard')){
+                 recentActivityList.querySelector('#noRecentActivityMessageDashboard').style.display = 'none';
+            }
             
-            // Try loading from Supabase first
-            getEmailsWithFilter(null, 1, 5).then(result => {
-                const recentItems = result.emails;
-                
-                if (!recentItems || recentItems.length === 0) {
-                    // No data from Supabase, try localStorage fallback
-                    const logData = JSON.parse(localStorage.getItem('leadSparkVerificationLog') || '[]');
-                    
-                    if (logData.length === 0) {
-                        recentActivityList.appendChild(noActivityMessage.cloneNode(true)); 
-                        noActivityMessage.style.display = 'none'; 
-                        recentActivityList.querySelector('#noRecentActivityMessageDashboard').style.display = 'list-item';
-                        return;
-                    }
-                    
-                    if(recentActivityList.querySelector('#noRecentActivityMessageDashboard')){
-                        recentActivityList.querySelector('#noRecentActivityMessageDashboard').style.display = 'none';
-                    }
-                    
-                    const items = logData.slice(0, 5);
-                    items.forEach(item => {
-                        const li = document.createElement('li');
-                        li.className = 'activity-item';
-                        const p = document.createElement('p');
-                        p.textContent = `Verified: ${item.email} (Status: ${item.status})`;
-                        const span = document.createElement('span');
-                        span.className = 'timestamp';
-                        span.textContent = validationLog_formatDate(item.timestamp); 
-                        li.appendChild(p);
-                        li.appendChild(span);
-                        recentActivityList.appendChild(li);
-                    });
-                    
-                    return;
-                }
-                
-                if(recentActivityList.querySelector('#noRecentActivityMessageDashboard')) {
-                    recentActivityList.querySelector('#noRecentActivityMessageDashboard').style.display = 'none';
-                }
-                
-                // Display Supabase data
-                recentItems.forEach(item => {
-                    const li = document.createElement('li');
-                    li.className = 'activity-item';
-                    const p = document.createElement('p');
-                    const action = item.source === 'finder' ? 'Found' : 'Verified';
-                    p.textContent = `${action}: ${item.email} (Status: ${item.status})`;
-                    const span = document.createElement('span');
-                    span.className = 'timestamp';
-                    span.textContent = validationLog_formatDate(item.timestamp); 
-                    li.appendChild(p);
-                    li.appendChild(span);
-                    recentActivityList.appendChild(li);
-                });
-            }).catch(err => {
-                console.error('Error loading recent activity from Supabase:', err);
-                
-                // Fallback to localStorage
-                const logData = JSON.parse(localStorage.getItem('leadSparkVerificationLog') || '[]');
-                
-                if (logData.length === 0) {
-                    recentActivityList.appendChild(noActivityMessage.cloneNode(true)); 
-                    noActivityMessage.style.display = 'none'; 
-                    recentActivityList.querySelector('#noRecentActivityMessageDashboard').style.display = 'list-item';
-                    return;
-                }
-                
-                if(recentActivityList.querySelector('#noRecentActivityMessageDashboard')) {
-                    recentActivityList.querySelector('#noRecentActivityMessageDashboard').style.display = 'none';
-                }
-                
-                const items = logData.slice(0, 5);
-                items.forEach(item => {
-                    const li = document.createElement('li');
-                    li.className = 'activity-item';
-                    const p = document.createElement('p');
-                    p.textContent = `Verified: ${item.email} (Status: ${item.status})`;
-                    const span = document.createElement('span');
-                    span.className = 'timestamp';
-                    span.textContent = validationLog_formatDate(item.timestamp); 
-                    li.appendChild(p);
-                    li.appendChild(span);
-                    recentActivityList.appendChild(li);
-                });
+            const recentItems = logData.slice(0, 5); 
+
+            recentItems.forEach(item => {
+                const li = document.createElement('li');
+                li.className = 'activity-item';
+                const p = document.createElement('p');
+                p.textContent = `Verified: ${item.email} (Status: ${item.status})`;
+                const span = document.createElement('span');
+                span.className = 'timestamp';
+                span.textContent = validationLog_formatDate(item.timestamp); 
+                li.appendChild(p);
+                li.appendChild(span);
+                recentActivityList.appendChild(li);
             });
         }
 
@@ -1915,42 +1733,17 @@ invalid-email" required></textarea>
         }
         function validationLog_loadAndDisplayLog() {
             const storedLogJSON = localStorage.getItem('leadSparkVerificationLog');
+            validationLog_fullLogData = storedLogJSON ? JSON.parse(storedLogJSON) : [];
             const selectedStatus = validationLog_statusFilter.value;
-            
-            // Try loading from Supabase first
-            getEmailsWithFilter(selectedStatus !== 'all' ? selectedStatus : null)
-                .then(result => {
-                    validationLog_fullLogData = result.emails || [];
-                    
-                    if (validationLog_fullLogData.length > 0) {
-                        validationLog_renderLogTable(validationLog_fullLogData);
-                    } else {
-                        // No data from Supabase, fall back to localStorage
-                        validationLog_fullLogData = storedLogJSON ? JSON.parse(storedLogJSON) : [];
-                        let filteredLog = validationLog_fullLogData;
-                        if (selectedStatus !== 'all') {
-                            filteredLog = validationLog_fullLogData.filter(entry => entry.status === selectedStatus);
-                        }
-                        validationLog_renderLogTable(filteredLog);
-                    }
-                })
-                .catch(err => {
-                    console.error('Error loading emails from Supabase for log:', err);
-                    
-                    // Fallback to localStorage
-                    validationLog_fullLogData = storedLogJSON ? JSON.parse(storedLogJSON) : [];
-                    let filteredLog = validationLog_fullLogData;
-                    if (selectedStatus !== 'all') {
-                        filteredLog = validationLog_fullLogData.filter(entry => entry.status === selectedStatus);
-                    }
-                    validationLog_renderLogTable(filteredLog);
-                });
+            let filteredLog = validationLog_fullLogData;
+            if (selectedStatus !== 'all') {
+                filteredLog = validationLog_fullLogData.filter(entry => entry.status === selectedStatus);
+            }
+            validationLog_renderLogTable(filteredLog);
         }
-        
         if (validationLog_statusFilter) {
             validationLog_statusFilter.addEventListener('change', validationLog_loadAndDisplayLog);
         }
-        
         if (validationLog_copyLogButton) {
             validationLog_copyLogButton.addEventListener('click', (e) => {
                 if (validationLog_currentlyDisplayedLogData.length > 0) {
@@ -1966,48 +1759,20 @@ invalid-email" required></textarea>
                 }
             });
         }
-        
         if (validationLog_clearLogButton) {
             validationLog_clearLogButton.addEventListener('click', () => {
                 if (confirm('Are you sure you want to clear the entire verification log? This action cannot be undone.')) {
-                    // Clear localStorage (fallback)
                     localStorage.removeItem('leadSparkVerificationLog');
-                    localStorage.removeItem('leadSparkAllValidEmails');
-                    
-                    // Clear Supabase
-                    clearAllEmails()
-                        .then(success => {
-                            if (success) {
-                                console.log('Successfully cleared all emails from Supabase');
-                            } else {
-                                console.error('Failed to clear emails from Supabase');
-                            }
-                            
-                            validationLog_fullLogData = []; 
-                            validationLog_loadAndDisplayLog();
-                            
-                            if (typeof dashboard_updateStats === 'function') dashboard_updateStats();
-                            if (typeof dashboard_loadAndDisplayValidEmails === 'function') dashboard_loadAndDisplayValidEmails();
-                            if (typeof dashboard_loadRecentActivity === 'function') dashboard_loadRecentActivity();
-                            
-                            alert('Verification log has been cleared.');
-                        })
-                        .catch(err => {
-                            console.error('Error clearing emails from Supabase:', err);
-                            validationLog_fullLogData = [];
-                            validationLog_loadAndDisplayLog();
-                            
-                            if (typeof dashboard_updateStats === 'function') dashboard_updateStats();
-                            if (typeof dashboard_loadAndDisplayValidEmails === 'function') dashboard_loadAndDisplayValidEmails();
-                            if (typeof dashboard_loadRecentActivity === 'function') dashboard_loadRecentActivity();
-                            
-                            alert('There was an error clearing emails from the database. Local storage was cleared successfully.');
-                        });
+                    localStorage.removeItem('leadSparkAllValidEmails'); 
+                    validationLog_fullLogData = []; 
+                    validationLog_loadAndDisplayLog(); 
+                    if (typeof dashboard_updateStats === 'function') dashboard_updateStats();
+                    if (typeof dashboard_loadAndDisplayValidEmails === 'function') dashboard_loadAndDisplayValidEmails();
+                    if (typeof dashboard_loadRecentActivity === 'function') dashboard_loadRecentActivity();
+                    alert('Verification log and related stored valid emails cleared.'); // Keep alert for destructive
                 }
             });
         }
-        
-        // Add back sorting functionality for validation log table
         document.querySelectorAll('#validationLogTable th[data-sort]').forEach(headerCell => {
             headerCell.addEventListener('click', () => {
                 const sortBy = headerCell.dataset.sort;
@@ -2017,9 +1782,11 @@ invalid-email" required></textarea>
                 document.querySelectorAll('#validationLogTable th[data-sort]').forEach(th => {
                     if (th !== headerCell) delete th.dataset.order;
                 });
-                
-                // Sort the current table data
+                const selectedStatus = validationLog_statusFilter.value;
                 let dataToSort = [...validationLog_fullLogData]; 
+                if (selectedStatus !== 'all') {
+                    dataToSort = dataToSort.filter(entry => entry.status === selectedStatus);
+                }
                 dataToSort.sort((a, b) => {
                     let valA = a[sortBy]; let valB = b[sortBy];
                     if (sortBy === 'timestamp') { valA = new Date(valA); valB = new Date(valB); } 
@@ -2440,168 +2207,6 @@ invalid-email" required></textarea>
             }
         }
 
-    </script>
-
-    <!-- Supabase Integration -->
-    <script>
-        // Initialize Supabase client
-        const SUPABASE_URL = 'https://fwjzynanbyjfgnkulwta.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ3anp5bmFuYnlqZmdua3Vsd3RhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc1NDY2NTcsImV4cCI6MjA2MzEyMjY1N30.0kq7G3uUqH_AYrSdCamlE5FIt2pgg_57t43xg1nXXGs';
-        // Access the supabaseJs global variable created by the CDN
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-        // Check if Supabase connection is working
-        async function checkSupabaseConnection() {
-            try {
-                const { data, error } = await supabase
-                    .from('emails')
-                    .select('count()', { count: 'exact' })
-                    .limit(1);
-                
-                if (error) {
-                    console.error('Supabase connection error:', error);
-                    return false;
-                }
-                console.log('Supabase connected successfully');
-                return true;
-            } catch (err) {
-                console.error('Supabase connection failed:', err);
-                return false;
-            }
-        }
-
-        // Insert a verified email into Supabase
-        async function storeEmailInSupabase(email, status, detail, source = 'verifier') {
-            try {
-                const { data, error } = await supabase
-                    .from('emails')
-                    .upsert([
-                        {
-                            email: email,
-                            status: status,
-                            detail: detail,
-                            source: source,
-                            timestamp: new Date().toISOString()
-                        }
-                    ], { onConflict: 'email' });
-                
-                if (error) {
-                    console.error('Error storing email in Supabase:', error);
-                    return false;
-                }
-                return true;
-            } catch (err) {
-                console.error('Failed to store email in Supabase:', err);
-                return false;
-            }
-        }
-
-        // Get all verified emails from Supabase
-        async function getAllVerifiedEmails() {
-            try {
-                const { data, error } = await supabase
-                    .from('emails')
-                    .select('*')
-                    .eq('status', 'Valid')
-                    .order('timestamp', { ascending: false });
-                
-                if (error) {
-                    console.error('Error fetching verified emails:', error);
-                    return [];
-                }
-                return data || [];
-            } catch (err) {
-                console.error('Failed to fetch verified emails:', err);
-                return [];
-            }
-        }
-
-        // Get all emails with paging and filtering
-        async function getEmailsWithFilter(filter = null, page = 1, pageSize = 50) {
-            try {
-                let query = supabase
-                    .from('emails')
-                    .select('*');
-                
-                if (filter && filter !== 'all') {
-                    query = query.eq('status', filter);
-                }
-                
-                const { data, error, count } = await query
-                    .order('timestamp', { ascending: false })
-                    .range((page - 1) * pageSize, page * pageSize - 1);
-                
-                if (error) {
-                    console.error('Error fetching emails with filter:', error);
-                    return { emails: [], count: 0 };
-                }
-                
-                return { emails: data || [], count };
-            } catch (err) {
-                console.error('Failed to fetch emails with filter:', err);
-                return { emails: [], count: 0 };
-            }
-        }
-
-        // Get email stats
-        async function getEmailStats() {
-            try {
-                const { data: totalData, error: totalError } = await supabase
-                    .from('emails')
-                    .select('count()', { count: 'exact' });
-                
-                const { data: validData, error: validError } = await supabase
-                    .from('emails')
-                    .select('count()', { count: 'exact' })
-                    .eq('status', 'Valid');
-                
-                const { data: riskyData, error: riskyError } = await supabase
-                    .from('emails')
-                    .select('count()', { count: 'exact' })
-                    .eq('status', 'Risky');
-                
-                if (totalError || validError || riskyError) {
-                    console.error('Error fetching email stats:', { totalError, validError, riskyError });
-                    return { total: 0, valid: 0, risky: 0 };
-                }
-                
-                return {
-                    total: totalData[0]?.count || 0,
-                    valid: validData[0]?.count || 0,
-                    risky: riskyData[0]?.count || 0
-                };
-            } catch (err) {
-                console.error('Failed to fetch email stats:', err);
-                return { total: 0, valid: 0, risky: 0 };
-            }
-        }
-
-        // Delete all emails (clear log)
-        async function clearAllEmails() {
-            try {
-                const { error } = await supabase
-                    .from('emails')
-                    .delete()
-                    .neq('id', '00000000-0000-0000-0000-000000000000'); // This ensures we're not using a null condition
-                
-                if (error) {
-                    console.error('Error clearing emails:', error);
-                    return false;
-                }
-                return true;
-            } catch (err) {
-                console.error('Failed to clear emails:', err);
-                return false;
-            }
-        }
-
-        // Check connection on page load
-        document.addEventListener('DOMContentLoaded', async () => {
-            const isConnected = await checkSupabaseConnection();
-            if (!isConnected) {
-                console.warn('Using localStorage fallback as Supabase connection failed');
-            }
-        });
     </script>
 </body>
 </html>
