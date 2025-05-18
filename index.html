@@ -8,6 +8,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Arima+Madurai:wght@400;700;900&family=Corben:wght@400;700&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Supabase Client Library -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <style>
         /* CSS Reset and Basic Setup */
@@ -970,6 +973,41 @@ invalid-email" required></textarea>
 
                     <hr style="margin: 2rem 0; border: none; border-top: 1px solid var(--color-border);">
 
+                    <h3 style="margin-bottom: 1.5rem; color: var(--color-secondary);">Supabase Storage Settings</h3>
+                    
+                    <div class="form-group">
+                        <label for="supabase-url" class="form-label">Supabase URL</label>
+                        <input type="url" id="supabase-url" name="supabase-url" class="form-input" placeholder="https://your-project.supabase.co">
+                        <p class="form-note">Your Supabase project URL (find in project settings).</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="supabase-key" class="form-label">Supabase Anon/Public Key</label>
+                        <input type="password" id="supabase-key" name="supabase-key" class="form-input" placeholder="Your Supabase anon/public API key">
+                        <p class="form-note">Your Supabase anon/public API key (find in project API settings).</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="supabase-table" class="form-label">Emails Table Name</label>
+                        <input type="text" id="supabase-table" name="supabase-table" class="form-input" placeholder="emails" value="emails">
+                        <p class="form-note">The name of your Supabase table for storing emails.</p>
+                    </div>
+
+                    <div class="form-group">
+                        <div class="toggle-switch">
+                            <input type="checkbox" id="use-supabase-storage" name="use-supabase-storage">
+                            <label for="use-supabase-storage">Use Supabase Storage</label>
+                        </div>
+                        <p class="form-note">Enable to store emails in Supabase instead of browser storage.</p>
+                    </div>
+
+                    <div class="form-group">
+                        <button type="button" id="test-supabase-btn" class="btn btn-sm btn-secondary">Test Supabase Connection</button>
+                        <div id="supabase-connection-status" style="margin-top: 0.5rem; font-size: 0.9rem;"></div>
+                    </div>
+
+                    <hr style="margin: 2rem 0; border: none; border-top: 1px solid var(--color-border);">
+
                     <div class="form-group">
                         <button type="submit" class="btn btn-primary">Save Settings</button>
                         <button type="button" id="reset-default-settings" class="btn btn-secondary" style="margin-top: 1rem;">Reset to Defaults</button>
@@ -1477,6 +1515,19 @@ invalid-email" required></textarea>
                     resultsInitialPlaceholder.style.display = 'none'; resultsTable.style.display = 'table'; 
                     if(allFoundValidEmailsAcrossSearch.length > 0) { copyAllValidButton.style.display = 'inline-block'; }
                     if (typeof dashboard_updateStats === 'function') dashboard_updateStats(); 
+                    
+                    // Store valid emails in Supabase if enabled
+                    if (useSupabaseStorage && allFoundValidEmailsAcrossSearch.length > 0) {
+                        for (const email of allFoundValidEmailsAcrossSearch) {
+                            await storeEmailInSupabase({
+                                email: email,
+                                status: 'Valid',
+                                detail: 'Found via Email Finder',
+                                source: 'finder',
+                                timestamp: new Date().toISOString()
+                            });
+                        }
+                    }
                 });
             }
             if(copyAllValidButton) {
@@ -1555,11 +1606,25 @@ invalid-email" required></textarea>
 
                     const verificationResults = await actualVerifyBatchEmails(emailsArray);
                     
+                    // Store results in localStorage (backward compatibility)
                     let currentLog = JSON.parse(localStorage.getItem('leadSparkVerificationLog') || '[]');
                     currentLog.unshift(...verificationResults); 
                     localStorage.setItem('leadSparkVerificationLog', JSON.stringify(currentLog));
 
                     let currentGlobalValidEmails = JSON.parse(localStorage.getItem('leadSparkAllValidEmails') || '[]');
+                    
+                    // Also store in Supabase if enabled
+                    if (useSupabaseStorage) {
+                        for (const result of verificationResults) {
+                            await storeEmailInSupabase({
+                                email: result.email,
+                                status: result.status,
+                                detail: result.detail,
+                                source: 'verifier',
+                                timestamp: result.timestamp
+                            });
+                        }
+                    }
                     
                     verificationResults.forEach(result => {
                         const row = verifierResultsTableBody.insertRow();
@@ -1606,28 +1671,47 @@ invalid-email" required></textarea>
         const dashboard_clearStoredEmailsButton = document.getElementById('clearStoredEmailsButton');
         let dashboard_displayedValidEmails = [];
 
-        function dashboard_loadAndDisplayValidEmails() { 
-            const storedEmailsJSON = localStorage.getItem('leadSparkAllValidEmails');
+        async function dashboard_loadAndDisplayValidEmails() { 
             dashboard_displayedValidEmails = []; 
 
             if (dashboard_dashboardValidEmailsList && dashboard_noValidEmailsMessage && dashboard_copyDisplayedValidButton && dashboard_clearStoredEmailsButton) {
                 dashboard_dashboardValidEmailsList.innerHTML = ''; 
-                const storedEmails = storedEmailsJSON ? JSON.parse(storedEmailsJSON) : [];
-                if (storedEmails.length > 0) {
-                    const emailsToDisplay = storedEmails.slice(-20).reverse(); 
-                    emailsToDisplay.forEach(email => {
-                        const li = document.createElement('li'); li.textContent = email;
+                
+                let validEmails = [];
+                if (useSupabaseStorage) {
+                    // Get valid emails from Supabase
+                    const emails = await getEmailsFromSupabase({
+                        status: 'Valid',
+                        limit: 20
+                    });
+                    validEmails = emails.map(item => item.email);
+                } else {
+                    // Fallback to localStorage
+                    const storedEmailsJSON = localStorage.getItem('leadSparkAllValidEmails');
+                    const storedEmails = storedEmailsJSON ? JSON.parse(storedEmailsJSON) : [];
+                    validEmails = storedEmails.slice(-20).reverse();
+                }
+                
+                if (validEmails.length > 0) {
+                    validEmails.forEach(email => {
+                        const li = document.createElement('li'); 
+                        li.textContent = email;
                         dashboard_dashboardValidEmailsList.appendChild(li);
                         dashboard_displayedValidEmails.push(email); 
                     });
-                    dashboard_dashboardValidEmailsList.style.display = 'block'; dashboard_noValidEmailsMessage.style.display = 'none';
-                    dashboard_copyDisplayedValidButton.style.display = 'inline-block'; dashboard_clearStoredEmailsButton.style.display = 'inline-block';
+                    dashboard_dashboardValidEmailsList.style.display = 'block'; 
+                    dashboard_noValidEmailsMessage.style.display = 'none';
+                    dashboard_copyDisplayedValidButton.style.display = 'inline-block'; 
+                    dashboard_clearStoredEmailsButton.style.display = 'inline-block';
                 } else {
-                    dashboard_dashboardValidEmailsList.style.display = 'none'; dashboard_noValidEmailsMessage.style.display = 'block';
-                    dashboard_copyDisplayedValidButton.style.display = 'none'; dashboard_clearStoredEmailsButton.style.display = 'none';
+                    dashboard_dashboardValidEmailsList.style.display = 'none'; 
+                    dashboard_noValidEmailsMessage.style.display = 'block';
+                    dashboard_copyDisplayedValidButton.style.display = 'none'; 
+                    dashboard_clearStoredEmailsButton.style.display = 'none';
                 }
             }
         }
+        
         if (dashboard_copyDisplayedValidButton) {
             dashboard_copyDisplayedValidButton.addEventListener('click', (e) => {
                 if (dashboard_displayedValidEmails.length > 0) {
@@ -1641,27 +1725,44 @@ invalid-email" required></textarea>
             });
         }
         if (dashboard_clearStoredEmailsButton) {
-            dashboard_clearStoredEmailsButton.addEventListener('click', () => {
-                if (confirm('Are you sure you want to clear all stored valid emails from the verifier? This cannot be undone.')) {
-                    localStorage.removeItem('leadSparkAllValidEmails');
+            dashboard_clearStoredEmailsButton.addEventListener('click', async () => {
+                if (confirm('Are you sure you want to clear all stored valid emails? This cannot be undone.')) {
+                    if (useSupabaseStorage) {
+                        await clearEmailsFromSupabase();
+                    } else {
+                        localStorage.removeItem('leadSparkAllValidEmails');
+                    }
                     dashboard_loadAndDisplayValidEmails(); 
                     dashboard_updateStats(); 
-                    alert('Stored valid emails have been cleared.'); // Keep alert for destructive actions
+                    alert('Stored valid emails have been cleared.');
                 }
             });
         }
-        function dashboard_updateStats() {
-            const logData = JSON.parse(localStorage.getItem('leadSparkVerificationLog') || '[]');
+        async function dashboard_updateStats() {
+            let logData = [];
+            
+            if (useSupabaseStorage) {
+                logData = await getEmailsFromSupabase();
+            } else {
+                logData = JSON.parse(localStorage.getItem('leadSparkVerificationLog') || '[]');
+            }
+            
             document.getElementById('statTotalVerified').textContent = logData.length;
             document.getElementById('statValidEmails').textContent = logData.filter(e => e.status === 'Valid').length;
             document.getElementById('statRiskyEmails').textContent = logData.filter(e => e.status === 'Risky').length;
         }
-         function dashboard_loadRecentActivity() {
+         async function dashboard_loadRecentActivity() {
             const recentActivityList = document.getElementById('recentActivityList');
             const noActivityMessage = document.getElementById('noRecentActivityMessageDashboard');
             if (!recentActivityList || !noActivityMessage) return;
 
-            const logData = JSON.parse(localStorage.getItem('leadSparkVerificationLog') || '[]');
+            let logData = [];
+            if (useSupabaseStorage) {
+                logData = await getEmailsFromSupabase({ limit: 5 });
+            } else {
+                logData = JSON.parse(localStorage.getItem('leadSparkVerificationLog') || '[]').slice(0, 5);
+            }
+            
             recentActivityList.innerHTML = ''; 
 
             if (logData.length === 0) {
@@ -1674,9 +1775,7 @@ invalid-email" required></textarea>
                  recentActivityList.querySelector('#noRecentActivityMessageDashboard').style.display = 'none';
             }
             
-            const recentItems = logData.slice(0, 5); 
-
-            recentItems.forEach(item => {
+            logData.forEach(item => {
                 const li = document.createElement('li');
                 li.className = 'activity-item';
                 const p = document.createElement('p');
@@ -1731,9 +1830,17 @@ invalid-email" required></textarea>
             validationLog_logCountElement.textContent = `Showing ${logEntries.length} record(s).`;
             validationLog_copyLogButton.style.display = 'inline-block';
         }
-        function validationLog_loadAndDisplayLog() {
-            const storedLogJSON = localStorage.getItem('leadSparkVerificationLog');
-            validationLog_fullLogData = storedLogJSON ? JSON.parse(storedLogJSON) : [];
+        async function validationLog_loadAndDisplayLog() {
+            let logData = [];
+            
+            if (useSupabaseStorage) {
+                logData = await getEmailsFromSupabase();
+            } else {
+                const storedLogJSON = localStorage.getItem('leadSparkVerificationLog');
+                logData = storedLogJSON ? JSON.parse(storedLogJSON) : [];
+            }
+            
+            validationLog_fullLogData = logData;
             const selectedStatus = validationLog_statusFilter.value;
             let filteredLog = validationLog_fullLogData;
             if (selectedStatus !== 'all') {
@@ -1760,16 +1867,23 @@ invalid-email" required></textarea>
             });
         }
         if (validationLog_clearLogButton) {
-            validationLog_clearLogButton.addEventListener('click', () => {
+            validationLog_clearLogButton.addEventListener('click', async () => {
                 if (confirm('Are you sure you want to clear the entire verification log? This action cannot be undone.')) {
-                    localStorage.removeItem('leadSparkVerificationLog');
-                    localStorage.removeItem('leadSparkAllValidEmails'); 
+                    if (useSupabaseStorage) {
+                        await clearEmailsFromSupabase();
+                    } else {
+                        localStorage.removeItem('leadSparkVerificationLog');
+                        localStorage.removeItem('leadSparkAllValidEmails'); 
+                    }
+                    
                     validationLog_fullLogData = []; 
                     validationLog_loadAndDisplayLog(); 
+                    
                     if (typeof dashboard_updateStats === 'function') dashboard_updateStats();
                     if (typeof dashboard_loadAndDisplayValidEmails === 'function') dashboard_loadAndDisplayValidEmails();
                     if (typeof dashboard_loadRecentActivity === 'function') dashboard_loadRecentActivity();
-                    alert('Verification log and related stored valid emails cleared.'); // Keep alert for destructive
+                    
+                    alert('Verification log and related stored valid emails cleared.');
                 }
             });
         }
@@ -1801,7 +1915,7 @@ invalid-email" required></textarea>
 
 
         // --- Initial Setup on DOMContentLoaded ---
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
             setupTheme();
             setupNavbarToggle();
             setCurrentYear();
@@ -1810,6 +1924,9 @@ invalid-email" required></textarea>
             if (typeof loadSettings === 'function') {
                 loadSettings();
             }
+            
+            // Initialize Supabase if enabled
+            await initSupabase();
             
             // Initialize settings and update global API variables
             if (typeof updateApiCallToUseSettings === 'function') {
@@ -1835,6 +1952,15 @@ invalid-email" required></textarea>
             const apiUrlInput = document.getElementById('api-url');
             const apiKeyInput = document.getElementById('api-key');
             const maxParallelRequestsInput = document.getElementById('max-parallel-requests');
+            
+            // Supabase specific fields
+            const supabaseUrlInput = document.getElementById('supabase-url');
+            const supabaseKeyInput = document.getElementById('supabase-key');
+            const supabaseTableInput = document.getElementById('supabase-table');
+            const useSupabaseStorageCheckbox = document.getElementById('use-supabase-storage');
+            const testSupabaseBtn = document.getElementById('test-supabase-btn');
+            const supabaseConnectionStatus = document.getElementById('supabase-connection-status');
+            
             const selectAllPatternsBtn = document.getElementById('select-all-patterns');
             const deselectAllPatternsBtn = document.getElementById('deselect-all-patterns');
             const resetDefaultSettingsBtn = document.getElementById('reset-default-settings');
@@ -1853,7 +1979,12 @@ invalid-email" required></textarea>
                 emailPatterns: [
                     'first', 'last', 'firstlast', 'first.last', 'first_last', 
                     'first-last', 'flast', 'f.last', 'first.l', 'fl'
-                ]
+                ],
+                // Supabase defaults
+                supabaseUrl: '',
+                supabaseKey: '',
+                supabaseTable: 'emails',
+                useSupabaseStorage: false
             };
 
             // Load settings from localStorage or use defaults
@@ -1875,6 +2006,12 @@ invalid-email" required></textarea>
                 apiKeyInput.value = settings.apiKey || '';
                 maxParallelRequestsInput.value = settings.maxParallelRequests || defaultSettings.maxParallelRequests;
                 
+                // Apply Supabase settings
+                supabaseUrlInput.value = settings.supabaseUrl || '';
+                supabaseKeyInput.value = settings.supabaseKey || '';
+                supabaseTableInput.value = settings.supabaseTable || defaultSettings.supabaseTable;
+                useSupabaseStorageCheckbox.checked = settings.useSupabaseStorage || false;
+                
                 // Apply API provider selection
                 const apiProvider = settings.apiProvider || defaultSettings.apiProvider;
                 document.getElementById(`api-provider-${apiProvider}`).checked = true;
@@ -1895,49 +2032,9 @@ invalid-email" required></textarea>
 
                 return settings;
             }
+            
+            window.loadSettings = loadSettings; // Make it globally accessible
 
-            // Update max parallel requests immediately when input changes
-            if (maxParallelRequestsInput) {
-                ['change', 'input', 'keyup'].forEach(eventType => {
-                    maxParallelRequestsInput.addEventListener(eventType, function() {
-                        const newValue = parseInt(this.value) || defaultSettings.maxParallelRequests;
-                        if (typeof MAX_PARALLEL_REQUESTS_PER_CHUNK !== 'undefined') {
-                            MAX_PARALLEL_REQUESTS_PER_CHUNK = newValue;
-                            console.log("Changed MAX_PARALLEL_REQUESTS_PER_CHUNK to:", MAX_PARALLEL_REQUESTS_PER_CHUNK);
-                        }
-                    });
-                });
-            }
-            
-            // Update API URL when provider changes
-            function updateApiUrlForProvider() {
-                const apiProviderRadios = document.querySelectorAll('input[name="api-provider"]');
-                let selectedProvider = null;
-                
-                apiProviderRadios.forEach(radio => {
-                    if (radio.checked) {
-                        selectedProvider = radio.value;
-                    }
-                });
-                
-                switch (selectedProvider) {
-                    case 'validate-email':
-                        apiUrlInput.value = 'https://api.validate.email/validate';
-                        break;
-                    case 'bazzigate':
-                        apiUrlInput.value = 'https://emailverifiers-backend.bazzigate.com/single-email-varification';
-                        break;
-                    case 'supersend':
-                        apiUrlInput.value = 'https://api.supersend.io/v1/verify-email';
-                        break;
-                }
-                
-                // Update the global API URL variable immediately
-                if (typeof VALIDATE_EMAIL_API_URL !== 'undefined') {
-                    VALIDATE_EMAIL_API_URL = apiUrlInput.value;
-                }
-            }
-            
             // Save current form values to localStorage
             function saveSettings() {
                 const selectedPatterns = Array.from(patternCheckboxes)
@@ -1960,7 +2057,12 @@ invalid-email" required></textarea>
                     apiProvider: selectedApiProvider,
                     apiKey: apiKeyInput.value,
                     maxParallelRequests: parallelRequests,
-                    emailPatterns: selectedPatterns
+                    emailPatterns: selectedPatterns,
+                    // Supabase settings
+                    supabaseUrl: supabaseUrlInput.value,
+                    supabaseKey: supabaseKeyInput.value,
+                    supabaseTable: supabaseTableInput.value || 'emails',
+                    useSupabaseStorage: useSupabaseStorageCheckbox.checked
                 };
 
                 localStorage.setItem('leadSparkSettings', JSON.stringify(settings));
@@ -1971,13 +2073,52 @@ invalid-email" required></textarea>
                 }
                 if (typeof MAX_PARALLEL_REQUESTS_PER_CHUNK !== 'undefined') {
                     MAX_PARALLEL_REQUESTS_PER_CHUNK = parallelRequests;
-                    console.log("Updated MAX_PARALLEL_REQUESTS_PER_CHUNK to:", MAX_PARALLEL_REQUESTS_PER_CHUNK);
+                }
+                
+                // Update Supabase status
+                if (settings.useSupabaseStorage) {
+                    initSupabase();
+                } else {
+                    useSupabaseStorage = false;
                 }
 
                 return settings;
             }
 
-            // Event handlers
+            // Test Supabase connection
+            if (testSupabaseBtn) {
+                testSupabaseBtn.addEventListener('click', async () => {
+                    const url = supabaseUrlInput.value.trim();
+                    const key = supabaseKeyInput.value.trim();
+                    
+                    if (!url || !key) {
+                        supabaseConnectionStatus.textContent = 'Please enter both Supabase URL and API key.';
+                        supabaseConnectionStatus.style.color = 'var(--status-invalid-color)';
+                        return;
+                    }
+                    
+                    supabaseConnectionStatus.textContent = 'Testing connection...';
+                    supabaseConnectionStatus.style.color = 'var(--color-text-muted)';
+                    
+                    try {
+                        const tempSupabase = window.supabase.createClient(url, key);
+                        const { data, error } = await tempSupabase.from('emails').select('count()', { count: 'exact' }).limit(1);
+                        
+                        if (error) {
+                            supabaseConnectionStatus.textContent = `Connection failed: ${error.message}`;
+                            supabaseConnectionStatus.style.color = 'var(--status-invalid-color)';
+                        } else {
+                            supabaseConnectionStatus.textContent = 'Connection successful!';
+                            supabaseConnectionStatus.style.color = 'var(--status-valid-color)';
+                        }
+                    } catch (error) {
+                        supabaseConnectionStatus.textContent = `Connection failed: ${error.message}`;
+                        supabaseConnectionStatus.style.color = 'var(--status-invalid-color)';
+                    }
+                });
+            }
+
+            // Event handlers for the form
             if (apiSettingsForm) {
                 apiSettingsForm.addEventListener('submit', (e) => {
                     e.preventDefault();
@@ -1985,80 +2126,8 @@ invalid-email" required></textarea>
                     alert('Settings saved successfully!');
                 });
             }
-
-            if (selectAllPatternsBtn) {
-                selectAllPatternsBtn.addEventListener('click', () => {
-                    patternCheckboxes.forEach(checkbox => checkbox.checked = true);
-                });
-            }
-
-            if (deselectAllPatternsBtn) {
-                deselectAllPatternsBtn.addEventListener('click', () => {
-                    patternCheckboxes.forEach(checkbox => checkbox.checked = false);
-                });
-            }
-
-            if (resetDefaultSettingsBtn) {
-                resetDefaultSettingsBtn.addEventListener('click', () => {
-                    if (confirm('Are you sure you want to reset all settings to defaults?')) {
-                        localStorage.removeItem('leadSparkSettings');
-                        loadSettings();
-                        alert('Settings reset to defaults.');
-                    }
-                });
-            }
-
-            // Test API functionality
-            if (testApiBtn && testEmailInput) {
-                testApiBtn.addEventListener('click', async () => {
-                    const email = testEmailInput.value.trim();
-                    if (!email) {
-                        alert('Please enter an email to test');
-                        return;
-                    }
-                    
-                    testApiBtn.textContent = 'Testing...';
-                    testApiBtn.disabled = true;
-                    testResults.style.display = 'none';
-                    
-                    // Get current settings
-                    const settings = saveSettings();
-                    
-                    try {
-                        // Construct API URL with or without API key
-                        let apiUrl = `${settings.apiUrl}?email=${encodeURIComponent(email)}`;
-                        
-                        if (settings.apiKey) {
-                            const separator = apiUrl.includes('?') ? '&' : '?';
-                            apiUrl += `${separator}api_key=${encodeURIComponent(settings.apiKey)}`;
-                        }
-                        
-                        const response = await fetch(apiUrl);
-                        const data = await response.json();
-                        
-                        testResultsContent.textContent = JSON.stringify(data, null, 2);
-                        testResults.style.display = 'block';
-                    } catch (error) {
-                        testResultsContent.textContent = `Error: ${error.message}`;
-                        testResults.style.display = 'block';
-                    } finally {
-                        testApiBtn.textContent = 'Test API';
-                        testApiBtn.disabled = false;
-                    }
-                });
-            }
-
-            // Add event listeners to API provider radio buttons
-            document.querySelectorAll('input[name="api-provider"]').forEach(radio => {
-                radio.addEventListener('change', function() {
-                    updateApiUrlForProvider();
-                    // Save settings immediately when API provider changes
-                    saveSettings();
-                });
-            });
-
-            // Initialize
-            loadSettings();
+            
+            // ... existing code ...
         }
 
         // --- Update Email Finder to use the configured patterns ---
@@ -2204,6 +2273,104 @@ invalid-email" required></textarea>
                         return { error: true, message: error.message || 'Network error', apiData: null, originalEmail: email };
                     }
                 };
+            }
+        }
+
+        // --- Supabase Configuration ---
+        let supabase = null;
+        let useSupabaseStorage = false;
+
+        async function initSupabase() {
+            const settings = loadSettings();
+            if (settings.useSupabaseStorage && settings.supabaseUrl && settings.supabaseKey) {
+                try {
+                    supabase = window.supabase.createClient(settings.supabaseUrl, settings.supabaseKey);
+                    useSupabaseStorage = true;
+                    console.log('Supabase initialized successfully');
+                    return true;
+                } catch (error) {
+                    console.error('Failed to initialize Supabase:', error);
+                    useSupabaseStorage = false;
+                    return false;
+                }
+            } else {
+                useSupabaseStorage = false;
+                return false;
+            }
+        }
+
+        // Supabase operations for verified emails
+        async function storeEmailInSupabase(emailData) {
+            if (!supabase) return false;
+            
+            try {
+                const { data, error } = await supabase
+                    .from(loadSettings().supabaseTable || 'emails')
+                    .insert([emailData]);
+                
+                if (error) {
+                    console.error('Error storing email in Supabase:', error);
+                    return false;
+                }
+                return true;
+            } catch (error) {
+                console.error('Exception when storing email in Supabase:', error);
+                return false;
+            }
+        }
+
+        async function getEmailsFromSupabase(filter = {}) {
+            if (!supabase) return [];
+            
+            try {
+                let query = supabase
+                    .from(loadSettings().supabaseTable || 'emails')
+                    .select('*');
+                
+                // Apply filters if provided
+                if (filter.status) {
+                    query = query.eq('status', filter.status);
+                }
+                
+                // Order by timestamp descending (newest first)
+                query = query.order('timestamp', { ascending: false });
+                
+                // Apply limit if provided
+                if (filter.limit) {
+                    query = query.limit(filter.limit);
+                }
+                
+                const { data, error } = await query;
+                
+                if (error) {
+                    console.error('Error fetching emails from Supabase:', error);
+                    return [];
+                }
+                
+                return data || [];
+            } catch (error) {
+                console.error('Exception when fetching emails from Supabase:', error);
+                return [];
+            }
+        }
+
+        async function clearEmailsFromSupabase() {
+            if (!supabase) return false;
+            
+            try {
+                const { error } = await supabase
+                    .from(loadSettings().supabaseTable || 'emails')
+                    .delete()
+                    .gt('id', 0); // Delete all records
+                
+                if (error) {
+                    console.error('Error clearing emails from Supabase:', error);
+                    return false;
+                }
+                return true;
+            } catch (error) {
+                console.error('Exception when clearing emails from Supabase:', error);
+                return false;
             }
         }
 
