@@ -4,6 +4,7 @@
 
 import { callValidateEmailAPI, mapApiResponseToIsValid, MAX_PARALLEL_REQUESTS_PER_CHUNK } from './api.js';
 import { showCopiedFeedback } from './utils.js';
+import { storeValidEmail } from './firebase.js';
 
 // Module variables
 let bulkFinderForm;
@@ -93,6 +94,17 @@ async function processPermutationsWithAPI(allPermutations) {
                 const apiCallResult = settledResult.value;
                 const isValid = mapApiResponseToIsValid(apiCallResult.apiData);
                 allResults.push({ email: apiCallResult.originalEmail, isValid: isValid });
+                
+                // Store valid emails in Firebase
+                if (isValid) {
+                    storeValidEmail({
+                        email: apiCallResult.originalEmail,
+                        status: 'Valid',
+                        detail: 'Found by Email Finder',
+                        timestamp: new Date().toISOString(),
+                        source: 'finder'
+                    }).catch(err => console.error('Error storing finder email in Firebase:', err));
+                }
             } else {
                 console.error(`API call rejected for one email in finder:`, settledResult.reason);
             }
@@ -173,6 +185,42 @@ function initEmailFinderScripts() {
                     }
                 });
             });
+            
+            // Add all valid emails to localStorage
+            const currentStoredEmails = JSON.parse(localStorage.getItem('leadSparkAllValidEmails') || '[]');
+            const newUniqueValidEmails = allFoundValidEmailsAcrossSearch.filter(email => !currentStoredEmails.includes(email));
+            if (newUniqueValidEmails.length > 0) {
+                currentStoredEmails.push(...newUniqueValidEmails);
+                localStorage.setItem('leadSparkAllValidEmails', JSON.stringify(currentStoredEmails));
+            }
+            
+            // Store all valid emails in Firebase with additional metadata
+            const validEmailsWithContext = allFoundValidEmailsAcrossSearch.map(email => {
+                // Find which name this email belongs to for better context
+                const matchingNameEntry = totalPermutationsToProcess.find(p => p.email === email);
+                return {
+                    email: email,
+                    status: 'Valid',
+                    detail: `Found by Email Finder for ${matchingNameEntry ? matchingNameEntry.name : 'unknown name'}`,
+                    timestamp: new Date().toISOString(),
+                    source: 'finder',
+                    searchDomain: domain
+                };
+            });
+            
+            // Process in batches to avoid overwhelming Firebase
+            const storeBatches = async (emailsData, batchSize = 10) => {
+                for (let i = 0; i < emailsData.length; i += batchSize) {
+                    const batch = emailsData.slice(i, i + batchSize);
+                    const promises = batch.map(emailData => storeValidEmail(emailData));
+                    await Promise.all(promises).catch(err => console.error('Error storing batch of finder emails:', err));
+                }
+            };
+            
+            // Store all valid emails in Firebase in the background
+            storeBatches(validEmailsWithContext)
+                .then(() => console.log(`Successfully stored ${validEmailsWithContext.length} valid emails from finder in Firebase`))
+                .catch(err => console.error('Error in batch storing emails from finder:', err));
             
             for (const fullName of namesArray) {
                 const validEmailsForThisName = resultsByFullName[fullName] || [];

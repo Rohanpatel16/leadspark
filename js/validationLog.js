@@ -58,6 +58,20 @@ function renderLogTable(logEntries) {
         statusCell.appendChild(statusSpan);
         
         row.insertCell().textContent = entry.detail || '-';
+        
+        // Add source cell with a badge indicating where the email was found
+        const sourceCell = row.insertCell();
+        sourceCell.className = 'source-cell';
+        if (entry.source) {
+            const sourceSpan = document.createElement('span');
+            sourceSpan.textContent = entry.source === 'finder' ? 'Email Finder' : 'Email Verifier';
+            sourceSpan.className = `source-badge ${entry.source === 'finder' ? 'finder' : 'verifier'}`;
+            sourceCell.appendChild(sourceSpan);
+        } else {
+            // For backward compatibility with older entries
+            sourceCell.textContent = 'Verifier';
+        }
+        
         row.insertCell().textContent = formatDate(entry.timestamp);
         currentlyDisplayedLogData.push(entry); 
     });

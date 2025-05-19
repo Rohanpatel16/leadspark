@@ -123,6 +123,11 @@ function initEmailVerifierScripts() {
                     if (!currentGlobalValidEmails.includes(result.email)) { 
                         currentGlobalValidEmails.push(result.email);
                     }
+                    
+                    // Add source information when storing in Firebase
+                    if (!result.source) {
+                        result.source = 'verifier';
+                    }
                 }
             });
             localStorage.setItem('leadSparkAllValidEmails', JSON.stringify(currentGlobalValidEmails));
