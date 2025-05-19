@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background Circle -->
+  <circle cx="16" cy="16" r="16" fill="#564787"/>
+  
+  <!-- Spark Icon -->
+  <path d="M20.5 6L12 17H17L11.5 26L22 14H16L20.5 6Z" fill="#F0673E" stroke="white" stroke-width="1" stroke-linejoin="round"/>
+  
+  <!-- Letter L -->
+  <path d="M8 10V20H12" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+</svg> 
