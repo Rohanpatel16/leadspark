@@ -3,6 +3,7 @@
  */
 
 import { showCopiedFeedback } from './utils.js';
+import { getValidEmails } from './firebase.js';
 
 // Module variables
 let dashboardValidEmailsList;
@@ -16,7 +17,7 @@ let displayedValidEmails = [];
 /**
  * Load and display valid emails in the dashboard
  */
-function loadAndDisplayValidEmails() {
+async function loadAndDisplayValidEmails() {
     dashboardValidEmailsList = document.getElementById('dashboardValidEmailsList');
     noValidEmailsMessage = document.getElementById('noValidEmailsMessage');
     copyDisplayedValidButton = document.getElementById('copyDisplayedValidButton');
@@ -28,28 +29,76 @@ function loadAndDisplayValidEmails() {
         return;
     }
     
-    const storedEmailsJSON = localStorage.getItem('leadSparkAllValidEmails');
     dashboardValidEmailsList.innerHTML = ''; 
     
-    const storedEmails = storedEmailsJSON ? JSON.parse(storedEmailsJSON) : [];
-    if (storedEmails.length > 0) {
-        const emailsToDisplay = storedEmails.slice(-20).reverse(); // Get last 20, newest first
-        emailsToDisplay.forEach(email => {
-            const li = document.createElement('li'); 
-            li.textContent = email;
-            dashboardValidEmailsList.appendChild(li);
-            displayedValidEmails.push(email); 
-        });
+    try {
+        // First try to get emails from Firebase
+        const firebaseEmails = await getValidEmails(20); // Get up to 20 most recent emails
         
-        dashboardValidEmailsList.style.display = 'block'; 
-        noValidEmailsMessage.style.display = 'none';
-        copyDisplayedValidButton.style.display = 'inline-block'; 
-        clearStoredEmailsButton.style.display = 'inline-block';
-    } else {
-        dashboardValidEmailsList.style.display = 'none'; 
-        noValidEmailsMessage.style.display = 'block';
-        copyDisplayedValidButton.style.display = 'none'; 
-        clearStoredEmailsButton.style.display = 'none';
+        if (firebaseEmails.length > 0) {
+            // We have emails from Firebase
+            firebaseEmails.forEach(emailData => {
+                const li = document.createElement('li'); 
+                li.textContent = emailData.email;
+                dashboardValidEmailsList.appendChild(li);
+                displayedValidEmails.push(emailData.email); 
+            });
+            
+            dashboardValidEmailsList.style.display = 'block'; 
+            noValidEmailsMessage.style.display = 'none';
+            copyDisplayedValidButton.style.display = 'inline-block'; 
+            clearStoredEmailsButton.style.display = 'inline-block';
+        } else {
+            // Fall back to local storage if no Firebase emails
+            const storedEmailsJSON = localStorage.getItem('leadSparkAllValidEmails');
+            const storedEmails = storedEmailsJSON ? JSON.parse(storedEmailsJSON) : [];
+            
+            if (storedEmails.length > 0) {
+                const emailsToDisplay = storedEmails.slice(-20).reverse(); // Get last 20, newest first
+                emailsToDisplay.forEach(email => {
+                    const li = document.createElement('li'); 
+                    li.textContent = email;
+                    dashboardValidEmailsList.appendChild(li);
+                    displayedValidEmails.push(email); 
+                });
+                
+                dashboardValidEmailsList.style.display = 'block'; 
+                noValidEmailsMessage.style.display = 'none';
+                copyDisplayedValidButton.style.display = 'inline-block'; 
+                clearStoredEmailsButton.style.display = 'inline-block';
+            } else {
+                dashboardValidEmailsList.style.display = 'none'; 
+                noValidEmailsMessage.style.display = 'block';
+                copyDisplayedValidButton.style.display = 'none'; 
+                clearStoredEmailsButton.style.display = 'none';
+            }
+        }
+    } catch (error) {
+        console.error('Error loading emails from Firebase:', error);
+        
+        // Fall back to local storage in case of error
+        const storedEmailsJSON = localStorage.getItem('leadSparkAllValidEmails');
+        const storedEmails = storedEmailsJSON ? JSON.parse(storedEmailsJSON) : [];
+        
+        if (storedEmails.length > 0) {
+            const emailsToDisplay = storedEmails.slice(-20).reverse(); // Get last 20, newest first
+            emailsToDisplay.forEach(email => {
+                const li = document.createElement('li'); 
+                li.textContent = email;
+                dashboardValidEmailsList.appendChild(li);
+                displayedValidEmails.push(email); 
+            });
+            
+            dashboardValidEmailsList.style.display = 'block'; 
+            noValidEmailsMessage.style.display = 'none';
+            copyDisplayedValidButton.style.display = 'inline-block'; 
+            clearStoredEmailsButton.style.display = 'inline-block';
+        } else {
+            dashboardValidEmailsList.style.display = 'none'; 
+            noValidEmailsMessage.style.display = 'block';
+            copyDisplayedValidButton.style.display = 'none'; 
+            clearStoredEmailsButton.style.display = 'none';
+        }
     }
     
     // Setup copy button functionality
@@ -69,11 +118,11 @@ function loadAndDisplayValidEmails() {
     // Setup clear button functionality
     if (clearStoredEmailsButton) {
         clearStoredEmailsButton.onclick = () => {
-            if (confirm('Are you sure you want to clear all stored valid emails from the verifier? This cannot be undone.')) {
+            if (confirm('Are you sure you want to clear all stored valid emails? This cannot be undone.')) {
                 localStorage.removeItem('leadSparkAllValidEmails');
                 loadAndDisplayValidEmails(); 
                 updateStats(); 
-                alert('Stored valid emails have been cleared.');
+                alert('Local stored valid emails have been cleared. Note that emails in Firebase will still be available.');
             }
         };
     }

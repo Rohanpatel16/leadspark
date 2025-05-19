@@ -481,6 +481,35 @@ invalid-email" required></textarea>
         </div>
     </footer>
 
+    <!-- Firebase SDKs -->
+    <script type="module">
+      // Import the functions you need from the SDKs you need
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-app.js";
+      import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-analytics.js";
+      import { getDatabase } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-database.js";
+      
+      // Your web app's Firebase configuration
+      const firebaseConfig = {
+        apiKey: "AIzaSyBikEhtKgm5tHCjc3zRfe2b0pJ4zfl7Ois",
+        authDomain: "leadspark160104.firebaseapp.com",
+        databaseURL: "https://leadspark160104-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "leadspark160104",
+        storageBucket: "leadspark160104.firebasestorage.app",
+        messagingSenderId: "665247889517",
+        appId: "1:665247889517:web:d3fa458d7ac873f1736764",
+        measurementId: "G-Y7BDKCYJPS"
+      };
+      
+      // Initialize Firebase
+      const app = initializeApp(firebaseConfig);
+      const analytics = getAnalytics(app);
+      const database = getDatabase(app);
+      
+      // Make Firebase available globally
+      window.firebaseApp = app;
+      window.firebaseDatabase = database;
+    </script>
+    
     <!-- External JavaScript - Using modules -->
     <script type="module" src="js/app.js"></script>
 </body>

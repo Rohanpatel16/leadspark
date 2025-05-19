@@ -4,6 +4,7 @@
 
 import { callValidateEmailAPI, mapApiResponseToStatusDetails, MAX_PARALLEL_REQUESTS_PER_CHUNK } from './api.js';
 import { showCopiedFeedback } from './utils.js';
+import { storeMultipleValidEmails } from './firebase.js';
 
 // Module variables
 let bulkVerifierForm;
@@ -97,8 +98,13 @@ function initEmailVerifierScripts() {
             let currentLog = JSON.parse(localStorage.getItem('leadSparkVerificationLog') || '[]');
             currentLog.unshift(...verificationResults); 
             localStorage.setItem('leadSparkVerificationLog', JSON.stringify(currentLog));
+            
+            // Store valid emails in Firebase
+            storeMultipleValidEmails(verificationResults)
+              .then(success => console.log('Firebase storage completed:', success ? 'Success' : 'Failed'))
+              .catch(err => console.error('Error storing emails in Firebase:', err));
 
-            // Save valid emails
+            // Save valid emails locally
             let currentGlobalValidEmails = JSON.parse(localStorage.getItem('leadSparkAllValidEmails') || '[]');
             
             verificationResults.forEach(result => {
