@@ -4,7 +4,7 @@
 
 import { callValidateEmailAPI, mapApiResponseToStatusDetails, MAX_PARALLEL_REQUESTS_PER_CHUNK } from './api.js';
 import { showCopiedFeedback } from './utils.js';
-import { storeMultipleValidEmails } from './firebase.js';
+import { storeMultipleValidEmails, getValidEmails } from './firebase.js';
 
 // Module variables
 let bulkVerifierForm;
@@ -159,4 +159,41 @@ function initEmailVerifierScripts() {
 export {
     initEmailVerifierScripts,
     actualVerifyBatchEmails
+}; 
+
+/**
+ * Debug function to test Firebase integration
+ * This can be called from the browser console: testFirebaseIntegration()
+ */
+window.testFirebaseIntegration = async function() {
+    console.log('Testing Firebase integration...');
+    
+    const testData = [
+        {
+            email: 'test@example.com',
+            status: 'Valid',
+            detail: 'Test email for Firebase integration',
+            timestamp: new Date().toISOString()
+        },
+        {
+            email: 'another@test.org',
+            status: 'Invalid',
+            detail: 'Another test email',
+            timestamp: new Date().toISOString()
+        }
+    ];
+    
+    try {
+        const result = await storeMultipleValidEmails(testData);
+        console.log('Firebase test result:', result);
+        
+        // Try reading back the data
+        const savedEmails = await getValidEmails(10);
+        console.log('Retrieved emails from Firebase:', savedEmails);
+        
+        return { success: true, message: 'Firebase test completed' };
+    } catch (error) {
+        console.error('Firebase test failed:', error);
+        return { success: false, error: error.message };
+    }
 }; 

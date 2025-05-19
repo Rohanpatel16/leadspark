@@ -23,6 +23,32 @@ const analytics = getAnalytics(app);
 const database = getDatabase(app);
 
 /**
+ * Initialize database with a test value to verify connection
+ * This will create a basic structure in your Firebase database
+ */
+function initDatabaseStructure() {
+  try {
+    // Create a reference to the root of the database
+    const rootRef = ref(database);
+    
+    // Set a basic structure with a test value
+    set(ref(database, 'initialized'), {
+      timestamp: new Date().toISOString(),
+      message: 'Database initialized successfully'
+    });
+    
+    console.log('Database structure initialized');
+    return true;
+  } catch (error) {
+    console.error('Error initializing database structure:', error);
+    return false;
+  }
+}
+
+// Initialize the database structure when this module loads
+initDatabaseStructure();
+
+/**
  * Store a valid email in Firebase
  * @param {Object} emailData - The email data to store
  * @param {string} emailData.email - The email address
@@ -33,7 +59,20 @@ const database = getDatabase(app);
  */
 async function storeValidEmail(emailData) {
   try {
+    // Using a proper path structure - 'validEmails'
     const emailsRef = ref(database, 'validEmails');
+    
+    // First, check if we can access this location
+    try {
+      await get(emailsRef);
+      console.log('Firebase database access successful');
+    } catch (accessError) {
+      console.error('Firebase database access error:', accessError);
+      // Try to write to the root instead to test permissions
+      await set(ref(database, 'accessTest'), { timestamp: new Date().toISOString() });
+    }
+    
+    // Continue with storing the email
     const newEmailRef = push(emailsRef);
     await set(newEmailRef, emailData);
     console.log('Email stored in Firebase:', emailData.email);
@@ -51,10 +90,21 @@ async function storeValidEmail(emailData) {
  */
 async function storeMultipleValidEmails(emailsData) {
   try {
-    const validEmails = emailsData.filter(email => email.status === 'Valid');
-    const promises = validEmails.map(email => storeValidEmail(email));
+    // Create a reference to the validEmails node if it doesn't exist
+    const validEmailsRef = ref(database, 'validEmails');
+    
+    // Store all emails, not just valid ones (for testing)
+    const promises = emailsData.map(email => {
+      // For testing purposes, ensure we store all emails
+      const emailWithTimestamp = {
+        ...email,
+        storedAt: new Date().toISOString()
+      };
+      return storeValidEmail(emailWithTimestamp);
+    });
+    
     await Promise.all(promises);
-    console.log(`${validEmails.length} valid emails stored in Firebase`);
+    console.log(`${emailsData.length} emails stored in Firebase`);
     return true;
   } catch (error) {
     console.error('Error storing multiple emails in Firebase:', error);
@@ -72,6 +122,8 @@ async function getValidEmails(limit = 100) {
     const emailsRef = ref(database, 'validEmails');
     const emailsQuery = query(emailsRef, orderByChild('timestamp'), limitToLast(limit));
     const snapshot = await get(emailsQuery);
+    
+    console.log('Firebase read attempt completed', snapshot.exists() ? 'with data' : 'but no data found');
     
     if (snapshot.exists()) {
       const emails = [];
@@ -94,5 +146,6 @@ async function getValidEmails(limit = 100) {
 export {
   storeValidEmail,
   storeMultipleValidEmails,
-  getValidEmails
+  getValidEmails,
+  initDatabaseStructure
 }; 

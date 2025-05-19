@@ -13,6 +13,7 @@ import {
     loadRecentActivity as dashboardLoadRecentActivity
 } from './dashboard.js';
 import { loadAndDisplayLog as validationLogLoadAndDisplayLog } from './validationLog.js';
+import { initDatabaseStructure, storeValidEmail } from './firebase.js';
 
 // --- Global Variables and Elements ---
 let allPageContents;
@@ -95,6 +96,9 @@ function initializeApp() {
     setupNavbarToggle();
     setCurrentYear();
     
+    // Test Firebase connection
+    testFirebaseConnection();
+    
     // Load settings first to initialize correct API configuration
     loadSettings();
     updateApiConfig();
@@ -114,6 +118,30 @@ function initializeApp() {
     
     // Show the initial page
     showPage('home-page-content');
+}
+
+/**
+ * Test Firebase database connection
+ */
+async function testFirebaseConnection() {
+    console.log('Testing Firebase database connection...');
+    
+    try {
+        // Initialize database structure
+        await initDatabaseStructure();
+        
+        // Store a test record
+        const testResult = await storeValidEmail({
+            email: 'connection-test@example.com',
+            status: 'Test',
+            detail: 'Firebase connection test',
+            timestamp: new Date().toISOString()
+        });
+        
+        console.log('Firebase connection test result:', testResult ? 'SUCCESS' : 'FAILED');
+    } catch (error) {
+        console.error('Firebase connection test error:', error);
+    }
 }
 
 // Initialize the app when DOM is loaded
