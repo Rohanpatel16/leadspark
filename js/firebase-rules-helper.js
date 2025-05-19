@@ -21,6 +21,7 @@
  *     "validEmails": {
  *       ".read": true,
  *       ".write": true,
+ *       ".indexOn": ["timestamp"],
  *       "$email_id": {
  *         ".validate": "newData.hasChildren(['email', 'status', 'timestamp'])"
  *       }
