@@ -3,7 +3,7 @@
  */
 
 import { showCopiedFeedback } from './utils.js';
-import { getValidEmails } from './firebase.js';
+import { getValidEmails, getDomainEmailCounts } from './firebase.js';
 
 // Module variables
 let dashboardValidEmailsList;
@@ -13,6 +13,7 @@ let clearStoredEmailsButton;
 let recentActivityList;
 let noRecentActivityMessageDashboard;
 let displayedValidEmails = [];
+let domainStatsContainer;
 
 /**
  * Load and display valid emails in the dashboard
@@ -22,6 +23,7 @@ async function loadAndDisplayValidEmails() {
     noValidEmailsMessage = document.getElementById('noValidEmailsMessage');
     copyDisplayedValidButton = document.getElementById('copyDisplayedValidButton');
     clearStoredEmailsButton = document.getElementById('clearStoredEmailsButton');
+    domainStatsContainer = document.getElementById('domainStatsContainer');
     
     displayedValidEmails = []; 
 
@@ -35,13 +37,44 @@ async function loadAndDisplayValidEmails() {
         // First try to get emails from Firebase
         const firebaseEmails = await getValidEmails(20); // Get up to 20 most recent emails
         
+        // Also get domain stats
+        const domainCounts = await getDomainEmailCounts();
+        displayDomainStats(domainCounts);
+        
         if (firebaseEmails.length > 0) {
+            // Group emails by domain for display
+            const emailsByDomain = {};
+            
             // We have emails from Firebase
             firebaseEmails.forEach(emailData => {
-                const li = document.createElement('li'); 
-                li.textContent = emailData.email;
-                dashboardValidEmailsList.appendChild(li);
-                displayedValidEmails.push(emailData.email); 
+                const domain = emailData.domain || 'unknown';
+                if (!emailsByDomain[domain]) {
+                    emailsByDomain[domain] = [];
+                }
+                emailsByDomain[domain].push(emailData);
+                displayedValidEmails.push(emailData.email);
+            });
+            
+            // Display emails grouped by domain
+            Object.keys(emailsByDomain).sort().forEach(domain => {
+                // Add domain header
+                const domainHeader = document.createElement('div');
+                domainHeader.className = 'domain-header';
+                domainHeader.innerHTML = `<strong>${domain}</strong> <span class="count">(${emailsByDomain[domain].length})</span>`;
+                dashboardValidEmailsList.appendChild(domainHeader);
+                
+                // Add emails for this domain
+                emailsByDomain[domain].forEach(emailData => {
+                    const li = document.createElement('li'); 
+                    li.textContent = emailData.email;
+                    if (emailData.findCount && emailData.findCount > 1) {
+                        const findCountBadge = document.createElement('span');
+                        findCountBadge.className = 'find-count';
+                        findCountBadge.textContent = emailData.findCount;
+                        li.appendChild(findCountBadge);
+                    }
+                    dashboardValidEmailsList.appendChild(li);
+                });
             });
             
             dashboardValidEmailsList.style.display = 'block'; 
@@ -126,6 +159,58 @@ async function loadAndDisplayValidEmails() {
             }
         };
     }
+}
+
+/**
+ * Display domain statistics in the dashboard
+ * @param {Object} domainCounts - Object with domains as keys and counts as values
+ */
+function displayDomainStats(domainCounts) {
+    if (!domainStatsContainer) {
+        domainStatsContainer = document.getElementById('domainStatsContainer');
+        if (!domainStatsContainer) return;
+    }
+    
+    domainStatsContainer.innerHTML = '';
+    
+    // If no domains, show message
+    if (Object.keys(domainCounts).length === 0) {
+        domainStatsContainer.innerHTML = '<p>No domain statistics available.</p>';
+        return;
+    }
+    
+    // Create a table for domain stats
+    const table = document.createElement('table');
+    table.className = 'domain-stats-table';
+    
+    // Add header
+    const thead = document.createElement('thead');
+    const headerRow = document.createElement('tr');
+    headerRow.innerHTML = `
+        <th>Domain</th>
+        <th>Email Count</th>
+    `;
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+    
+    // Add body
+    const tbody = document.createElement('tbody');
+    
+    // Sort domains by count (descending)
+    const sortedDomains = Object.keys(domainCounts).sort((a, b) => domainCounts[b] - domainCounts[a]);
+    
+    sortedDomains.forEach(domain => {
+        const count = domainCounts[domain];
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${domain}</td>
+            <td>${count}</td>
+        `;
+        tbody.appendChild(row);
+    });
+    
+    table.appendChild(tbody);
+    domainStatsContainer.appendChild(table);
 }
 
 /**

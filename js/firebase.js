@@ -3,7 +3,7 @@
 // Import Firebase SDK
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-app.js";
 import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-analytics.js";
-import { getDatabase, ref, set, push, get, query, orderByChild, limitToLast } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-database.js";
+import { getDatabase, ref, set, push, get, query, orderByChild, limitToLast, child, remove } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-database.js";
 
 // Firebase configuration
 const firebaseConfig = {
@@ -21,6 +21,9 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const analytics = getAnalytics(app);
 const database = getDatabase(app);
+
+// Test email prefixes to identify test emails
+const TEST_EMAIL_PREFIXES = ['test', 'demo', 'connection-test', 'example', 'sample'];
 
 /**
  * Initialize database with a test value to verify connection
@@ -49,7 +52,53 @@ function initDatabaseStructure() {
 initDatabaseStructure();
 
 /**
- * Store a valid email in Firebase
+ * Extract domain from email address
+ * @param {string} email - The email address
+ * @returns {string} The domain part of the email
+ */
+function getDomainFromEmail(email) {
+  if (!email || typeof email !== 'string') return 'unknown';
+  const parts = email.split('@');
+  return parts.length === 2 ? parts[1] : 'unknown';
+}
+
+/**
+ * Normalize email address for comparison (to prevent duplicates)
+ * @param {string} email - The email address to normalize
+ * @returns {string} Normalized email address
+ */
+function normalizeEmail(email) {
+  if (!email) return '';
+  // Convert to lowercase
+  return email.toLowerCase().trim();
+}
+
+/**
+ * Check if an email is a test email
+ * @param {string} email - Email to check
+ * @returns {boolean} True if it's a test email
+ */
+function isTestEmail(email) {
+  if (!email || typeof email !== 'string') return false;
+  const lowerEmail = email.toLowerCase();
+  
+  // Check for test domains
+  if (
+    lowerEmail.includes('@example.com') || 
+    lowerEmail.includes('@test.') || 
+    lowerEmail.includes('@sample.') ||
+    lowerEmail.includes('@demo.')
+  ) {
+    return true;
+  }
+  
+  // Check for test prefixes
+  const localPart = lowerEmail.split('@')[0];
+  return TEST_EMAIL_PREFIXES.some(prefix => localPart.startsWith(prefix));
+}
+
+/**
+ * Store a valid email in Firebase, organized by domain
  * @param {Object} emailData - The email data to store
  * @param {string} emailData.email - The email address
  * @param {string} emailData.status - The verification status
@@ -59,24 +108,82 @@ initDatabaseStructure();
  */
 async function storeValidEmail(emailData) {
   try {
-    // Using a proper path structure - 'validEmails'
-    const emailsRef = ref(database, 'validEmails');
+    if (!emailData || !emailData.email) {
+      console.error('Invalid email data provided');
+      return false;
+    }
     
-    // First, check if we can access this location
+    const normalizedEmail = normalizeEmail(emailData.email);
+    const emailDomain = getDomainFromEmail(normalizedEmail);
+    const isTest = isTestEmail(normalizedEmail);
+    
+    // Organize by domain: domains/{domain}/emails/{emailId}
+    // Or for test emails: test_emails/{emailId}
+    const storePath = isTest ? 'test_emails' : `domains/${emailDomain}/emails`;
+    
+    // Before storing, check if this email already exists in this domain
+    const domainEmailsRef = ref(database, storePath);
+    
     try {
-      await get(emailsRef);
-      console.log('Firebase database access successful');
+      const existingEmailsSnapshot = await get(domainEmailsRef);
+      
+      // Check if the email already exists
+      if (existingEmailsSnapshot.exists()) {
+        let isDuplicate = false;
+        existingEmailsSnapshot.forEach(childSnapshot => {
+          const existingEmail = childSnapshot.val();
+          if (existingEmail && normalizeEmail(existingEmail.email) === normalizedEmail) {
+            isDuplicate = true;
+            // Update the timestamp to mark it was found again
+            if (!isTest) {
+              set(child(domainEmailsRef, childSnapshot.key), {
+                ...existingEmail, 
+                lastFound: new Date().toISOString(),
+                findCount: (existingEmail.findCount || 0) + 1
+              });
+              console.log(`Email already exists in database, updated timestamp: ${normalizedEmail}`);
+            }
+            return true; // Break the forEach loop
+          }
+        });
+        
+        if (isDuplicate) {
+          return true; // Email already exists, no need to add again
+        }
+      }
+      
+      // Email doesn't exist, add it
+      const newEmailRef = push(domainEmailsRef);
+      
+      // Add additional metadata
+      const enhancedEmailData = {
+        ...emailData,
+        email: normalizedEmail,
+        domain: emailDomain,
+        firstFound: emailData.timestamp || new Date().toISOString(),
+        lastFound: new Date().toISOString(),
+        findCount: 1,
+        isTest: isTest
+      };
+      
+      await set(newEmailRef, enhancedEmailData);
+      console.log(`Email stored in Firebase (${isTest ? 'TEST' : 'VALID'}): ${normalizedEmail}`);
+      
+      // For test emails, schedule cleanup
+      if (isTest) {
+        setTimeout(() => {
+          cleanupTestEmails();
+        }, 10 * 60 * 1000); // Clean up test emails after 10 minutes
+      }
+      
+      return true;
+      
     } catch (accessError) {
       console.error('Firebase database access error:', accessError);
       // Try to write to the root instead to test permissions
       await set(ref(database, 'accessTest'), { timestamp: new Date().toISOString() });
+      return false;
     }
-    
-    // Continue with storing the email
-    const newEmailRef = push(emailsRef);
-    await set(newEmailRef, emailData);
-    console.log('Email stored in Firebase:', emailData.email);
-    return true;
   } catch (error) {
     console.error('Error storing email in Firebase:', error);
     return false;
@@ -90,24 +197,74 @@ async function storeValidEmail(emailData) {
  */
 async function storeMultipleValidEmails(emailsData) {
   try {
-    // Create a reference to the validEmails node if it doesn't exist
-    const validEmailsRef = ref(database, 'validEmails');
+    // Filter valid emails and prepare for storage
+    const validEmails = emailsData.filter(email => email.status === 'Valid');
     
-    // Store all emails, not just valid ones (for testing)
-    const promises = emailsData.map(email => {
-      // For testing purposes, ensure we store all emails
-      const emailWithTimestamp = {
-        ...email,
-        storedAt: new Date().toISOString()
-      };
-      return storeValidEmail(emailWithTimestamp);
+    // Remove duplicates before sending to Firebase (based on normalized email)
+    const uniqueEmails = [];
+    const seenEmails = new Set();
+    
+    validEmails.forEach(email => {
+      const normalized = normalizeEmail(email.email);
+      if (!seenEmails.has(normalized)) {
+        seenEmails.add(normalized);
+        uniqueEmails.push({
+          ...email,
+          storedAt: new Date().toISOString()
+        });
+      }
     });
     
+    // Store each email (the storeValidEmail function will handle domain organization)
+    const promises = uniqueEmails.map(emailData => storeValidEmail(emailData));
+    
     await Promise.all(promises);
-    console.log(`${emailsData.length} emails stored in Firebase`);
+    console.log(`${uniqueEmails.length} valid emails stored in Firebase`);
     return true;
   } catch (error) {
     console.error('Error storing multiple emails in Firebase:', error);
+    return false;
+  }
+}
+
+/**
+ * Clean up test emails that are older than a certain threshold
+ * @returns {Promise<boolean>} Success status
+ */
+async function cleanupTestEmails() {
+  try {
+    console.log('Cleaning up test emails...');
+    const testEmailsRef = ref(database, 'test_emails');
+    const snapshot = await get(testEmailsRef);
+    
+    if (!snapshot.exists()) {
+      console.log('No test emails to clean up');
+      return true;
+    }
+    
+    let cleanupCount = 0;
+    const oneHourAgo = new Date();
+    oneHourAgo.setHours(oneHourAgo.getHours() - 1);
+    
+    const cleanupPromises = [];
+    
+    snapshot.forEach(childSnapshot => {
+      const emailData = childSnapshot.val();
+      if (emailData) {
+        const storedTime = new Date(emailData.timestamp || emailData.firstFound || 0);
+        // Remove if older than 1 hour
+        if (storedTime < oneHourAgo) {
+          cleanupPromises.push(remove(child(testEmailsRef, childSnapshot.key)));
+          cleanupCount++;
+        }
+      }
+    });
+    
+    await Promise.all(cleanupPromises);
+    console.log(`Cleaned up ${cleanupCount} test emails`);
+    return true;
+  } catch (error) {
+    console.error('Error cleaning up test emails:', error);
     return false;
   }
 }
@@ -119,33 +276,106 @@ async function storeMultipleValidEmails(emailsData) {
  */
 async function getValidEmails(limit = 100) {
   try {
-    const emailsRef = ref(database, 'validEmails');
-    const emailsQuery = query(emailsRef, orderByChild('timestamp'), limitToLast(limit));
-    const snapshot = await get(emailsQuery);
+    // Get all domain folders
+    const domainsRef = ref(database, 'domains');
+    const domainsSnapshot = await get(domainsRef);
     
-    console.log('Firebase read attempt completed', snapshot.exists() ? 'with data' : 'but no data found');
-    
-    if (snapshot.exists()) {
-      const emails = [];
-      snapshot.forEach((childSnapshot) => {
-        emails.push({
-          id: childSnapshot.key,
-          ...childSnapshot.val()
-        });
-      });
-      // Sort by timestamp in descending order (newest first)
-      return emails.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    if (!domainsSnapshot.exists()) {
+      console.log('No domains found in Firebase');
+      return [];
     }
-    return [];
+    
+    const allEmails = [];
+    
+    // Process each domain
+    const domainPromises = [];
+    domainsSnapshot.forEach(domainSnapshot => {
+      const domainKey = domainSnapshot.key;
+      const emailsRef = ref(database, `domains/${domainKey}/emails`);
+      
+      // Get emails for this domain
+      const promise = get(emailsRef).then(emailsSnapshot => {
+        if (emailsSnapshot.exists()) {
+          emailsSnapshot.forEach(emailSnapshot => {
+            allEmails.push({
+              id: emailSnapshot.key,
+              domain: domainKey,
+              ...emailSnapshot.val()
+            });
+          });
+        }
+      }).catch(err => {
+        console.error(`Error getting emails for domain ${domainKey}:`, err);
+      });
+      
+      domainPromises.push(promise);
+    });
+    
+    // Wait for all domain email retrievals to complete
+    await Promise.all(domainPromises);
+    
+    console.log(`Retrieved ${allEmails.length} emails from all domains`);
+    
+    // Sort by timestamp in descending order (newest first) and limit
+    const sortedEmails = allEmails
+      .sort((a, b) => new Date(b.timestamp || b.lastFound) - new Date(a.timestamp || a.lastFound))
+      .slice(0, limit);
+    
+    return sortedEmails;
   } catch (error) {
     console.error('Error retrieving emails from Firebase:', error);
     return [];
   }
 }
 
+/**
+ * Get email counts by domain
+ * @returns {Promise<Object>} Object with domains as keys and counts as values
+ */
+async function getDomainEmailCounts() {
+  try {
+    const domainsRef = ref(database, 'domains');
+    const domainsSnapshot = await get(domainsRef);
+    
+    if (!domainsSnapshot.exists()) {
+      return {};
+    }
+    
+    const counts = {};
+    const countPromises = [];
+    
+    domainsSnapshot.forEach(domainSnapshot => {
+      const domainKey = domainSnapshot.key;
+      const emailsRef = ref(database, `domains/${domainKey}/emails`);
+      
+      const promise = get(emailsRef).then(emailsSnapshot => {
+        if (emailsSnapshot.exists()) {
+          counts[domainKey] = Object.keys(emailsSnapshot.val()).length;
+        } else {
+          counts[domainKey] = 0;
+        }
+      }).catch(err => {
+        console.error(`Error getting count for domain ${domainKey}:`, err);
+        counts[domainKey] = 0;
+      });
+      
+      countPromises.push(promise);
+    });
+    
+    await Promise.all(countPromises);
+    return counts;
+  } catch (error) {
+    console.error('Error getting domain email counts:', error);
+    return {};
+  }
+}
+
+// Export functions
 export {
   storeValidEmail,
   storeMultipleValidEmails,
   getValidEmails,
-  initDatabaseStructure
+  getDomainEmailCounts,
+  initDatabaseStructure,
+  cleanupTestEmails
 }; 
