@@ -543,3 +543,30 @@ img { max-width: 100%; height: auto; display: block; }
     .log-controls { flex-direction: column; align-items: stretch;}
     .log-controls > div { margin-bottom: 0.5rem; }
 } 
+
+/* No activity message styling */
+.no-activities {
+    background-color: var(--color-bg-alt);
+    border-left: 4px solid var(--color-accent);
+    padding: 1.2rem 1rem;
+    margin-bottom: 1rem;
+    border-radius: 0 var(--border-radius) var(--border-radius) 0;
+    animation: fadeIn 0.5s ease-in-out;
+}
+
+.no-activities p {
+    color: var(--color-text);
+    font-size: 1.1rem;
+    margin: 0;
+    line-height: 1.6;
+}
+
+.no-activities strong {
+    color: var(--color-primary);
+    font-weight: 600;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+} 

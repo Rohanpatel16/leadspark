@@ -75,6 +75,10 @@ function showPage(pageId) {
     window.scrollTo(0, 0); 
 
     // Load data for specific pages if needed
+    if (pageId === 'home-page-content') {
+        // Refresh Recent Activity when returning to home page
+        loadHomeActivity();
+    }
     if (pageId === 'dashboard-page-content') {
         dashboardUpdateStats();
         dashboardLoadAndDisplayValidEmails();
@@ -121,8 +125,92 @@ function initializeApp() {
         });
     });
     
+    // Initialize home page activity display
+    loadHomeActivity();
+    
     // Show the initial page
     showPage('home-page-content');
+}
+
+/**
+ * Load and display actual recent activity on the home page
+ */
+function loadHomeActivity() {
+    const homeActivityContainer = document.getElementById('home-activity-container');
+    const noActivityMessage = document.getElementById('no-activity-message');
+    
+    if (!homeActivityContainer) return;
+    
+    // Clear existing content except the no-activity message
+    Array.from(homeActivityContainer.children).forEach(child => {
+        if (child.id !== 'no-activity-message') {
+            homeActivityContainer.removeChild(child);
+        }
+    });
+    
+    // Get activity data from localStorage
+    const logData = JSON.parse(localStorage.getItem('leadSparkVerificationLog') || '[]');
+    
+    if (logData.length === 0) {
+        // Show the encouraging message if no activity
+        if (noActivityMessage) {
+            noActivityMessage.style.display = 'block';
+        }
+        return;
+    }
+    
+    // Hide the no-activity message
+    if (noActivityMessage) {
+        noActivityMessage.style.display = 'none';
+    }
+    
+    // Format and display recent activities (most recent first)
+    const recentActivities = logData.slice(-3).reverse(); // Get the 3 most recent activities
+    
+    recentActivities.forEach(activity => {
+        const activityItem = document.createElement('div');
+        activityItem.className = 'activity-item';
+        
+        const activityText = document.createElement('p');
+        if (activity.source === 'finder') {
+            activityText.innerHTML = `<strong>Searched:</strong> ${activity.domain || 'Unknown domain'} (Email: ${activity.email})`;
+        } else {
+            activityText.innerHTML = `<strong>Verified:</strong> ${activity.email} (Status: ${activity.status})`;
+        }
+        
+        const timestamp = document.createElement('span');
+        timestamp.className = 'timestamp';
+        
+        // Format the timestamp relative to now (e.g., "2 hours ago")
+        const activityDate = new Date(activity.timestamp);
+        const now = new Date();
+        const diffMs = now - activityDate;
+        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+        
+        if (diffDays === 0) {
+            const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+            if (diffHours === 0) {
+                const diffMinutes = Math.floor(diffMs / (1000 * 60));
+                timestamp.textContent = `${diffMinutes} ${diffMinutes === 1 ? 'minute' : 'minutes'} ago`;
+            } else {
+                timestamp.textContent = `${diffHours} ${diffHours === 1 ? 'hour' : 'hours'} ago`;
+            }
+        } else if (diffDays === 1) {
+            timestamp.textContent = 'Yesterday';
+        } else {
+            timestamp.textContent = `${diffDays} days ago`;
+        }
+        
+        activityItem.appendChild(activityText);
+        activityItem.appendChild(timestamp);
+        homeActivityContainer.appendChild(activityItem);
+    });
+    
+    // Update the "View All Activity" link visibility based on data availability
+    const viewAllLink = document.getElementById('homeViewAllActivityLink');
+    if (viewAllLink) {
+        viewAllLink.style.display = logData.length > 3 ? 'inline-block' : 'none';
+    }
 }
 
 // Initialize the app when DOM is loaded

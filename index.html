@@ -72,18 +72,17 @@
 
             <section id="recent-activity" class="recent-activity-section section">
                 <div class="container">
-                    <h2>Recent Activity</h2>
-                    <div class="activity-item">
-                        <p><strong>Searched:</strong> coolcompany.com (5 emails found)</p>
-                        <span class="timestamp">2 hours ago</span>
-                    </div>
-                    <div class="activity-item">
-                        <p><strong>Verified:</strong> contact@example.org (Status: Valid)</p>
-                        <span class="timestamp">Yesterday</span>
-                    </div>
-                    <div class="activity-item">
-                        <p><strong>Exported:</strong> "Tech Leads Q3" list</p>
-                        <span class="timestamp">3 days ago</span>
+                    <h2>Start Your Discovery Journey</h2>
+                    <div id="home-activity-container">
+                        <!-- JS will populate this area with actual activity or message -->
+                        <div id="no-activity-message" style="display: none;">
+                            <div class="activity-item no-activities">
+                                <p>🔎 Your email hunting journey awaits! <strong>Find and verify</strong> your first leads to see your activity here.</p>
+                            </div>
+                            <div class="activity-item no-activities">
+                                <p>🚀 <strong>Unleash your inner detective</strong> - start discovering hidden emails today!</p>
+                            </div>
+                        </div>
                     </div>
                     <p class="text-center" style="margin-top: 2rem;"><a href="javascript:showPage('validation-log-page-content');" id="homeViewAllActivityLink">View All Activity →</a></p>
                 </div>
@@ -228,16 +227,16 @@ invalid-email" required></textarea>
                     <div class="dashboard-content-grid">
                         <div class="dashboard-panel">
                             <h3>
-                                Recently Found Valid Emails
+                                Your Valid Emails (This Session)
                                 <button class="btn btn-sm btn-secondary btn-copy" id="copyDisplayedValidButton" data-original-text="Copy Displayed" style="display:none;">Copy Displayed</button>
                             </h3>
                             <div id="dashboardValidEmailsListContainer">
-                                <p id="noValidEmailsMessage">No recently found valid emails to display from verifier.</p>
+                                <p id="noValidEmailsMessage">No validated emails in your current session. Use the Email Verifier to start validating.</p>
                                 <ul class="valid-emails-display-list" id="dashboardValidEmailsList" style="display:none;">
                                     <!-- JS will populate this -->
                                 </ul>
                             </div>
-                             <button class="btn btn-sm btn-primary" id="clearStoredEmailsButton" style="margin-top:1rem; display:none;">Clear Stored Valid Emails</button>
+                             <button class="btn btn-sm btn-primary" id="clearStoredEmailsButton" style="margin-top:1rem; display:none;">Clear Session Emails</button>
                         </div>
 
                         <div class="dashboard-panel">
@@ -255,7 +254,7 @@ invalid-email" required></textarea>
                                 <li><a href="javascript:showPage('email-finder-page-content');" class="dashboard-ql-finder">🚀 Go to Email Finder</a></li>
                                 <li><a href="javascript:showPage('email-verifier-page-content');" class="dashboard-ql-verifier">✔️ Go to Email Verifier</a></li>
                                 <li><a href="#reports">📊 View Reports (Coming Soon)</a></li>
-                                <li><a href="#settings">⚙️ Account Settings (Coming Soon)</a></li>
+                                <li><a href="javascript:showPage('settings-page-content');" class="dashboard-ql-settings">⚙️ Account Settings</a></li>
                             </ul>
                         </div>
 
@@ -473,12 +472,133 @@ invalid-email" required></textarea>
         </section>
     </div>
 
+    <!-- Privacy Policy Page Content -->
+    <div id="privacy-policy-page-content" class="page-content">
+        <header class="page-header tool-page-header"> 
+            <div class="container">
+                <h1><span style="color: var(--color-primary);">🔒</span> Privacy Policy</h1> 
+                <p>How we handle your data and protect your privacy.</p>
+            </div>
+        </header>
+
+        <section id="privacy-content" class="section">
+            <div class="container">
+                <div class="content-article">
+                    <h2>Privacy Policy</h2>
+                    <p><strong>Last Updated:</strong> <span id="policyDate"></span></p>
+                    
+                    <h3>1. Introduction</h3>
+                    <p>LeadSpark ("we", "our", or "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our email finding and verification service.</p>
+                    
+                    <h3>2. Information We Collect</h3>
+                    <p>We collect information that you provide directly to us, including:</p>
+                    <ul>
+                        <li>Names and domain names you enter for email discovery</li>
+                        <li>Email addresses you submit for verification</li>
+                        <li>API credentials you enter for third-party services</li>
+                        <li>Usage data including verification logs and activity history</li>
+                    </ul>
+                    
+                    <h3>3. How We Use Your Information</h3>
+                    <p>We use the information we collect to:</p>
+                    <ul>
+                        <li>Provide and improve our services</li>
+                        <li>Process and complete transactions</li>
+                        <li>Respond to your inquiries and requests</li>
+                        <li>Send you technical notices and updates</li>
+                        <li>Monitor and analyze usage patterns</li>
+                    </ul>
+                    
+                    <h3>4. Data Storage</h3>
+                    <p>LeadSpark stores minimal data on your device using local storage mechanisms. This includes:</p>
+                    <ul>
+                        <li>API settings and preferences</li>
+                        <li>Validation logs and recent activity</li>
+                        <li>Theme preferences</li>
+                    </ul>
+                    
+                    <h3>5. Third-party Services</h3>
+                    <p>Our service integrates with third-party email validation APIs. When you use these features, you may be sending data to these third parties through our interface. We recommend reviewing the privacy policies of these services:</p>
+                    <ul>
+                        <li>validate.email</li>
+                        <li>Bazzigate</li>
+                        <li>SuperSend</li>
+                    </ul>
+                    
+                    <h3>6. Analytics</h3>
+                    <p>We may use Firebase Analytics to collect anonymous usage data to help us improve our service. This data is used in aggregate and is not personally identifiable.</p>
+                    
+                    <h3>7. Changes to This Privacy Policy</h3>
+                    <p>We may update our Privacy Policy from time to time. We will notify you of any changes by updating the "Last Updated" date at the top of this policy.</p>
+                    
+                    <h3>8. Contact Us</h3>
+                    <p>If you have questions about this Privacy Policy, please contact us at support@leadspark.example.com.</p>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Terms of Service Page Content -->
+    <div id="terms-of-service-page-content" class="page-content">
+        <header class="page-header tool-page-header"> 
+            <div class="container">
+                <h1><span style="color: var(--color-accent);">📄</span> Terms of Service</h1> 
+                <p>Please read these terms carefully before using LeadSpark.</p>
+            </div>
+        </header>
+
+        <section id="terms-content" class="section">
+            <div class="container">
+                <div class="content-article">
+                    <h2>Terms of Service</h2>
+                    <p><strong>Last Updated:</strong> <span id="termsDate"></span></p>
+                    
+                    <h3>1. Acceptance of Terms</h3>
+                    <p>By accessing or using LeadSpark, you agree to be bound by these Terms of Service. If you do not agree to these Terms, you should not use the service.</p>
+                    
+                    <h3>2. Description of Service</h3>
+                    <p>LeadSpark provides email finding and verification tools that allow users to discover and validate email addresses based on names and domains. The service is provided as-is with no guarantees of accuracy or availability.</p>
+                    
+                    <h3>3. User Responsibilities</h3>
+                    <p>As a user of LeadSpark, you agree to:</p>
+                    <ul>
+                        <li>Provide accurate information when using the service</li>
+                        <li>Use the service in compliance with all applicable laws and regulations</li>
+                        <li>Not use the service for spam, harassment, or any unlawful purpose</li>
+                        <li>Respect the privacy and rights of individuals whose email addresses you discover</li>
+                        <li>Be responsible for maintaining the security of any API keys or credentials you enter</li>
+                    </ul>
+                    
+                    <h3>4. API Usage</h3>
+                    <p>LeadSpark integrates with third-party APIs for email validation. You are responsible for:</p>
+                    <ul>
+                        <li>Obtaining legitimate access to these APIs</li>
+                        <li>Adhering to the terms and conditions of these third-party services</li>
+                        <li>Any costs associated with API usage</li>
+                    </ul>
+                    
+                    <h3>5. Limitation of Liability</h3>
+                    <p>LeadSpark and its creators shall not be liable for any indirect, incidental, special, consequential, or punitive damages resulting from your use of or inability to use the service.</p>
+                    
+                    <h3>6. Disclaimers</h3>
+                    <p>THE SERVICE IS PROVIDED "AS IS" WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED. WE DO NOT GUARANTEE THE ACCURACY, COMPLETENESS, OR RELIABILITY OF EMAIL VERIFICATION RESULTS.</p>
+                    
+                    <h3>7. Changes to Terms</h3>
+                    <p>We reserve the right to modify these Terms at any time. Continued use of the service after changes constitutes acceptance of the new Terms.</p>
+                    
+                    <h3>8. Contact</h3>
+                    <p>If you have any questions about these Terms, please contact us at support@leadspark.example.com.</p>
+                </div>
+            </div>
+        </section>
+    </div>
+
     <!-- Footer -->
     <footer class="footer">
         <div class="container">
             <a href="javascript:showPage('home-page-content');" class="navbar-brand">LeadSpark</a>
             <p>© <span id="currentYear"></span> LeadSpark Tools. Your personal email toolkit.</p>
-            <p><a href="#privacy">Privacy Policy</a> | <a href="#terms">Terms of Service</a></p>
+            <p><a href="javascript:showPage('privacy-policy-page-content');">Privacy Policy</a> | <a href="javascript:showPage('terms-of-service-page-content');">Terms of Service</a></p>
         </div>
     </footer>
 
