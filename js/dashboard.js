@@ -3,7 +3,7 @@
  */
 
 import { showCopiedFeedback } from './utils.js';
-import { getValidEmails } from './firebase.js';
+import { getValidEmails, getEmailsByDomain } from './firebase.js';
 
 // Module variables
 let dashboardValidEmailsList;
@@ -13,6 +13,120 @@ let clearStoredEmailsButton;
 let recentActivityList;
 let noRecentActivityMessageDashboard;
 let displayedValidEmails = [];
+
+/**
+ * Populate domain selector with available domains
+ */
+async function populateDomainSelector() {
+    const domainSelector = document.getElementById('domainSelector');
+    if (!domainSelector) return;
+    
+    try {
+        // Get all emails to extract domains
+        const allEmails = await getValidEmails(500); // Get a larger set to find domains
+        
+        // Extract unique domains
+        const domains = new Set();
+        allEmails.forEach(email => {
+            if (email.domain) {
+                domains.add(email.domain);
+            } else if (email.email && email.email.includes('@')) {
+                const domain = email.email.split('@')[1];
+                domains.add(domain);
+            }
+        });
+        
+        // Clear existing options except for the first placeholder
+        while (domainSelector.options.length > 1) {
+            domainSelector.remove(1);
+        }
+        
+        // Add domains to selector
+        Array.from(domains).sort().forEach(domain => {
+            const option = document.createElement('option');
+            option.value = domain;
+            option.textContent = domain;
+            domainSelector.appendChild(option);
+        });
+        
+        // Add event listener
+        if (!domainSelector.getAttribute('data-initialized')) {
+            domainSelector.addEventListener('change', handleDomainSelection);
+            domainSelector.setAttribute('data-initialized', 'true');
+        }
+    } catch (error) {
+        console.error('Error populating domain selector:', error);
+    }
+}
+
+/**
+ * Handle domain selection change
+ */
+async function handleDomainSelection() {
+    const domainSelector = document.getElementById('domainSelector');
+    const domainEmailsList = document.getElementById('domainEmailsList');
+    const noDomainSelectedMessage = document.getElementById('noDomainSelectedMessage');
+    const domainStats = document.getElementById('domainStats');
+    const domainEmailCount = document.getElementById('domainEmailCount');
+    
+    if (!domainSelector || !domainEmailsList || !noDomainSelectedMessage || !domainStats) return;
+    
+    const selectedDomain = domainSelector.value;
+    
+    if (!selectedDomain) {
+        noDomainSelectedMessage.style.display = 'block';
+        domainEmailsList.style.display = 'none';
+        domainStats.style.display = 'none';
+        return;
+    }
+    
+    try {
+        // Show loading state
+        noDomainSelectedMessage.textContent = 'Loading emails...';
+        noDomainSelectedMessage.style.display = 'block';
+        domainEmailsList.style.display = 'none';
+        
+        // Fetch emails for selected domain
+        const emails = await getEmailsByDomain(selectedDomain, 100);
+        
+        if (emails.length === 0) {
+            noDomainSelectedMessage.textContent = `No emails found for domain: ${selectedDomain}`;
+            domainStats.style.display = 'none';
+            return;
+        }
+        
+        // Populate the emails list
+        domainEmailsList.innerHTML = '';
+        emails.forEach(email => {
+            const li = document.createElement('li');
+            const emailText = document.createElement('span');
+            emailText.textContent = email.email;
+            li.appendChild(emailText);
+            
+            // Add source badge if available
+            if (email.source) {
+                const sourceBadge = document.createElement('span');
+                sourceBadge.className = 'email-source';
+                sourceBadge.textContent = email.source === 'finder' ? 'Finder' : 'Verifier';
+                li.appendChild(sourceBadge);
+            }
+            
+            domainEmailsList.appendChild(li);
+        });
+        
+        // Update stats
+        domainEmailCount.textContent = emails.length;
+        
+        // Show results
+        noDomainSelectedMessage.style.display = 'none';
+        domainEmailsList.style.display = 'block';
+        domainStats.style.display = 'block';
+    } catch (error) {
+        console.error('Error loading emails for domain:', error);
+        noDomainSelectedMessage.textContent = `Error loading emails for domain: ${selectedDomain}`;
+        domainStats.style.display = 'none';
+    }
+}
 
 /**
  * Load and display valid emails in the dashboard
@@ -35,11 +149,49 @@ async function loadAndDisplayValidEmails() {
         // First try to get emails from Firebase
         const firebaseEmails = await getValidEmails(20); // Get up to 20 most recent emails
         
-        if (firebaseEmails.length > 0) {
+        // Deduplicate emails (just to be sure)
+        const uniqueEmails = [];
+        const emailSet = new Set();
+        
+        firebaseEmails.forEach(emailData => {
+            if (!emailSet.has(emailData.email)) {
+                emailSet.add(emailData.email);
+                uniqueEmails.push(emailData);
+            }
+        });
+        
+        if (uniqueEmails.length > 0) {
             // We have emails from Firebase
-            firebaseEmails.forEach(emailData => {
+            uniqueEmails.forEach(emailData => {
                 const li = document.createElement('li'); 
-                li.textContent = emailData.email;
+                
+                // Create container for email and source badge
+                const container = document.createElement('div');
+                container.style.display = 'flex';
+                container.style.justifyContent = 'space-between';
+                container.style.alignItems = 'center';
+                container.style.width = '100%';
+                
+                // Email text
+                const emailText = document.createElement('span');
+                emailText.textContent = emailData.email;
+                container.appendChild(emailText);
+                
+                // Source badge if available
+                if (emailData.source) {
+                    const sourceBadge = document.createElement('span');
+                    sourceBadge.className = 'source-badge';
+                    sourceBadge.classList.add(emailData.source);
+                    sourceBadge.textContent = emailData.source === 'finder' ? 'F' : 'V';
+                    sourceBadge.title = emailData.source === 'finder' ? 'Found by Email Finder' : 'Verified by Email Verifier';
+                    sourceBadge.style.fontSize = '0.7em';
+                    sourceBadge.style.padding = '0.1em 0.4em';
+                    sourceBadge.style.borderRadius = '3px';
+                    sourceBadge.style.marginLeft = '0.5rem';
+                    container.appendChild(sourceBadge);
+                }
+                
+                li.appendChild(container);
                 dashboardValidEmailsList.appendChild(li);
                 displayedValidEmails.push(emailData.email); 
             });
@@ -48,6 +200,9 @@ async function loadAndDisplayValidEmails() {
             noValidEmailsMessage.style.display = 'none';
             copyDisplayedValidButton.style.display = 'inline-block'; 
             clearStoredEmailsButton.style.display = 'inline-block';
+            
+            // Also populate domain selector
+            populateDomainSelector();
         } else {
             // Fall back to local storage if no Firebase emails
             const storedEmailsJSON = localStorage.getItem('leadSparkAllValidEmails');
@@ -214,6 +369,7 @@ function initializeDashboard() {
     loadAndDisplayValidEmails();
     updateStats();
     loadRecentActivity();
+    populateDomainSelector();
 }
 
 // Initialize dashboard when DOM loads
@@ -224,5 +380,7 @@ export {
     loadAndDisplayValidEmails,
     updateStats,
     loadRecentActivity,
-    formatDate
+    formatDate,
+    populateDomainSelector,
+    handleDomainSelection
 }; 
