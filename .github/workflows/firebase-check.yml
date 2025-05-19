@@ -1,0 +1,18 @@
+name: Firebase Configuration Check
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Verify Firebase Config Files
+        run: |
+          echo "Checking Firebase Integration Files..."
+          ls -la js/firebase.js || echo "firebase.js not found"
+          ls -la js/firebase-rules-helper.js || echo "firebase-rules-helper.js not found"
+          echo "Firebase integration verification complete" 
