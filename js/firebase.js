@@ -4,6 +4,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-app.js";
 import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-analytics.js";
 import { getDatabase, ref, set, push, get, query, orderByChild, limitToLast, child, remove } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-database.js";
+import { showFirebaseRulesInstructions } from "./firebase-rules-helper.js";
 
 // Firebase configuration
 const firebaseConfig = {
@@ -22,6 +23,10 @@ const app = initializeApp(firebaseConfig);
 const analytics = getAnalytics(app);
 const database = getDatabase(app);
 
+// Make Firebase objects available globally for debugging
+window.firebaseApp = app;
+window.firebaseDatabase = database;
+
 // Test email prefixes to identify test emails
 const TEST_EMAIL_PREFIXES = ['test', 'demo', 'connection-test', 'example', 'sample'];
 
@@ -39,11 +44,26 @@ function initDatabaseStructure() {
       timestamp: new Date().toISOString(),
       message: 'Database initialized successfully'
     });
+
+    // Create a test email in the test_emails path
+    const testEmailRef = push(ref(database, 'test_emails'));
+    set(testEmailRef, {
+      email: 'connection-test@example.com',
+      status: 'Test',
+      detail: 'Firebase connection test',
+      timestamp: new Date().toISOString()
+    }).catch(error => {
+      console.error('Error creating test email entry:', error);
+      // If there's an error, it might be due to permissions
+      showFirebaseRulesInstructions();
+    });
     
     console.log('Database structure initialized');
     return true;
   } catch (error) {
     console.error('Error initializing database structure:', error);
+    // Show rules instructions if there's an initialization error
+    showFirebaseRulesInstructions();
     return false;
   }
 }
@@ -96,6 +116,44 @@ function isTestEmail(email) {
   const localPart = lowerEmail.split('@')[0];
   return TEST_EMAIL_PREFIXES.some(prefix => localPart.startsWith(prefix));
 }
+
+/**
+ * Test whether we have write permissions to our new domain-based structure
+ * This will be called before any actual email storage operations
+ */
+async function testDomainStructureAccess() {
+  try {
+    // Try to write to a test domain
+    const testDomainRef = ref(database, 'domains/test-domain/emails');
+    const testEmailRef = push(testDomainRef);
+    
+    await set(testEmailRef, {
+      email: 'permission-test@test-domain.com',
+      status: 'Test',
+      detail: 'Testing domain-based structure permissions',
+      timestamp: new Date().toISOString()
+    });
+    
+    // Clean up after test
+    remove(testEmailRef).catch(err => console.log('Cleanup error:', err));
+    
+    console.log('Domain structure access test passed');
+    return true;
+  } catch (error) {
+    console.error('Domain structure access test failed:', error);
+    showFirebaseRulesInstructions();
+    return false;
+  }
+}
+
+// Run the structure test after initialization
+testDomainStructureAccess().then(hasAccess => {
+  if (hasAccess) {
+    console.log('Firebase is properly configured with domain-based structure permissions');
+  } else {
+    console.warn('Firebase permissions issue detected - see console for instructions');
+  }
+});
 
 /**
  * Store a valid email in Firebase, organized by domain

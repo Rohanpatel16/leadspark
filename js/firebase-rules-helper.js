@@ -24,6 +24,36 @@
  *       "$email_id": {
  *         ".validate": "newData.hasChildren(['email', 'status', 'timestamp'])"
  *       }
+ *     },
+ *     "domains": {
+ *       ".read": true,
+ *       ".write": true,
+ *       "$domain": {
+ *         ".read": true,
+ *         ".write": true,
+ *         "emails": {
+ *           ".read": true,
+ *           ".write": true,
+ *           "$email_id": {
+ *             ".validate": "newData.hasChildren(['email', 'status'])"
+ *           }
+ *         }
+ *       }
+ *     },
+ *     "test_emails": {
+ *       ".read": true,
+ *       ".write": true,
+ *       "$email_id": {
+ *         ".validate": "newData.hasChildren(['email', 'status'])"
+ *       }
+ *     },
+ *     "initialized": {
+ *       ".read": true,
+ *       ".write": true
+ *     },
+ *     "accessTest": {
+ *       ".read": true,
+ *       ".write": true
  *     }
  *   }
  * }
@@ -109,5 +139,88 @@ window.testDatabasePermissions = async function() {
         return { success: false, error: error.message };
     }
 };
+
+// This is the recommended rules structure for the LeadSpark application
+const RECOMMENDED_FIREBASE_RULES = `{
+  "rules": {
+    ".read": true,
+    ".write": true,
+    "validEmails": {
+      ".read": true,
+      ".write": true,
+      "$email_id": {
+        ".validate": "newData.hasChildren(['email', 'status', 'timestamp'])"
+      }
+    },
+    "domains": {
+      ".read": true,
+      ".write": true,
+      "$domain": {
+        ".read": true,
+        ".write": true,
+        "emails": {
+          ".read": true,
+          ".write": true,
+          "$email_id": {
+            ".validate": "newData.hasChildren(['email', 'status'])"
+          }
+        }
+      }
+    },
+    "test_emails": {
+      ".read": true,
+      ".write": true,
+      "$email_id": {
+        ".validate": "newData.hasChildren(['email', 'status'])"
+      }
+    },
+    "initialized": {
+      ".read": true,
+      ".write": true
+    },
+    "accessTest": {
+      ".read": true,
+      ".write": true
+    }
+  }
+}`;
+
+/**
+ * Show Firebase rules instructions
+ */
+function showFirebaseRulesInstructions() {
+  console.info(`
+  ========================================
+  FIREBASE RULES SETUP INSTRUCTIONS
+  ========================================
+  
+  It appears you're having trouble writing to your Firebase database.
+  This is most likely due to Firebase security rules not being properly configured.
+  
+  Please copy the following rules to your Firebase console:
+  
+  ${RECOMMENDED_FIREBASE_RULES}
+  
+  Steps to update Firebase rules:
+  
+  1. Go to your Firebase Console: https://console.firebase.google.com/
+  2. Select your project (leadspark160104)
+  3. In the left navigation, click on "Realtime Database"
+  4. Click on the "Rules" tab
+  5. Replace the existing rules with the rules shown above
+  6. Click "Publish" to save the changes
+  
+  After setting these rules, refresh this page and try again.
+  
+  NOTE: These are permissive rules suitable for development.
+  For production, you should implement proper authentication and
+  more restrictive rules.
+  ========================================
+  `);
+  
+  alert('Firebase Rules need to be updated. See console for instructions.');
+}
+
+export { showFirebaseRulesInstructions, RECOMMENDED_FIREBASE_RULES };
 
 console.log("Firebase rules helper loaded. You can run checkFirebaseConnection() or testDatabasePermissions() from the console."); 
