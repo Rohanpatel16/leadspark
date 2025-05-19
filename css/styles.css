@@ -462,68 +462,7 @@ img { max-width: 100%; height: auto; display: block; }
 .valid-emails-display-list li:nth-child(odd) { background-color: var(--color-bg-alt); }
 .dark-theme .valid-emails-display-list li:nth-child(odd) { background-color: var(--color-surface); }
 
-/* Domain selector styles */
-.domain-selection {
-    margin-bottom: 1rem;
-}
-
-.domain-select {
-    width: 100%;
-    padding: 0.5em;
-    border: 1px solid var(--color-border);
-    border-radius: var(--border-radius-sm);
-    background-color: var(--color-bg);
-    color: var(--color-text);
-    font-family: var(--font-body);
-    font-size: 0.9rem;
-}
-
-.domain-emails-list {
-    list-style: none;
-    padding: 0;
-    max-height: 200px;
-    overflow-y: auto;
-    margin-bottom: 1rem;
-    border: 1px solid var(--color-border);
-    border-radius: var(--border-radius-sm);
-}
-
-.domain-emails-list li {
-    padding: 0.5rem 0.75rem;
-    border-bottom: 1px solid var(--color-border);
-    font-size: 0.9rem;
-    color: var(--color-text);
-    display: flex;
-    justify-content: space-between;
-}
-
-.domain-emails-list li:last-child {
-    border-bottom: none;
-}
-
-.domain-emails-list li:nth-child(odd) {
-    background-color: var(--color-bg-alt);
-}
-
-.dark-theme .domain-emails-list li:nth-child(odd) {
-    background-color: var(--color-surface);
-}
-
-.domain-emails-list .email-source {
-    font-size: 0.8em;
-    padding: 0.1em 0.4em;
-    border-radius: var(--border-radius-sm);
-    background-color: var(--color-bg-alt);
-    color: var(--color-text-muted);
-    margin-left: 0.5rem;
-}
-
-.domain-stats {
-    margin-top: 1rem;
-    font-size: 0.9rem;
-}
-
-/* Validation Log Page Specific Styles --- */
+/* --- Validation Log Page Specific Styles --- */
 .log-controls { margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;}
 .log-controls label { margin-right: 0.5rem; font-weight: 500;}
 .log-controls select, .log-controls input[type="text"] {
