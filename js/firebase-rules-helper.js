@@ -1,114 +1,124 @@
 /**
- * Firebase Rules Helper Script
- * 
- * This script is designed to help debug Firebase rules issues.
- * It can be run from the browser console or added to your application.
+ * Firebase Rules Helper - Debug and manage Firebase rules
+ * This is for development purposes to set up and debug rules
  */
 
 /**
- * Instructions for updating Firebase Realtime Database rules:
- * 
- * 1. Go to Firebase Console: https://console.firebase.google.com/
- * 2. Select your project "leadspark160104"
- * 3. Click on "Realtime Database" from the left sidebar
- * 4. Go to the "Rules" tab
- * 5. Update your rules to the following:
- * 
- * {
- *   "rules": {
- *     ".read": true,
- *     ".write": true,
- *     "validEmails": {
- *       ".read": true,
- *       ".write": true,
- *       ".indexOn": ["timestamp"],
- *       "$email_id": {
- *         ".validate": "newData.hasChildren(['email', 'status', 'timestamp'])"
- *       }
- *     }
- *   }
- * }
- * 
- * 6. Click "Publish" to save these rules
- * 
- * Note: These rules are set to public read/write for testing purposes.
- * For production, you should implement proper authentication and security rules.
+ * Generate Firebase Realtime Database rules
+ * @returns {Object} Firebase rules object
  */
+function generateFirebaseRules() {
+  return {
+    "rules": {
+      ".read": true,  // For development testing only
+      ".write": true, // For development testing only
+      "initialized": {
+        ".read": true,
+        ".write": true
+      },
+      "validEmails": {
+        ".indexOn": ["timestamp", "email"],
+        ".read": true,
+        ".write": true
+      },
+      "emailsByDomain": {
+        ".read": true,
+        ".write": true
+      }
+    }
+  };
+}
 
-// This function can be called from the console to check if Firebase is connected
-window.checkFirebaseConnection = function() {
-    if (window.firebaseApp) {
-        console.log("Firebase is initialized!");
-        console.log("Configuration:", window.firebaseApp.options);
-        return {
-            status: "Firebase is connected",
-            config: window.firebaseApp.options
-        };
+/**
+ * Show the generated rules in the console for easy copying
+ */
+function showRulesInConsole() {
+  const rules = generateFirebaseRules();
+  console.log("===== FIREBASE RULES =====");
+  console.log(JSON.stringify(rules, null, 2));
+  console.log("=========================");
+  console.log("Copy these rules to your Firebase Realtime Database Rules in the Firebase Console");
+  console.log("https://console.firebase.google.com/project/leadspark160104/database/leadspark160104-default-rtdb/rules");
+}
+
+// Auto-print rules to console when this script loads
+showRulesInConsole();
+
+/**
+ * Test Firebase access and rules
+ * @returns {Promise<Object>} Test results
+ */
+async function testFirebaseRules() {
+  try {
+    const database = window.firebaseDatabase;
+    if (!database) {
+      return { success: false, error: "Firebase database not available" };
+    }
+
+    // Test write access
+    const testRef = database.ref("test");
+    await testRef.set({
+      testValue: "This is a test value",
+      timestamp: new Date().toISOString()
+    });
+    
+    // Test read access
+    const snapshot = await testRef.get();
+    if (snapshot.exists()) {
+      return { 
+        success: true, 
+        message: "Firebase rules test successful", 
+        readData: snapshot.val() 
+      };
     } else {
-        console.error("Firebase is not initialized or not available globally");
-        return {
-            status: "Firebase is NOT connected", 
-            error: "Firebase App not found in window object"
-        };
+      return { success: false, error: "No data available" };
     }
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+
+// Make functions available globally for testing in the console
+window.showFirebaseRules = showRulesInConsole;
+window.testFirebaseRules = testFirebaseRules;
+
+/**
+ * Create the proper Firebase index structure
+ * This is a helper for anyone setting up this project
+ */
+window.setupFirebaseIndex = function() {
+  console.log("For the restructured database, ensure you have the following rules:");
+  console.log(`
+{
+  "rules": {
+    ".read": true,
+    ".write": true,
+    "initialized": {
+      ".read": true,
+      ".write": true
+    },
+    "validEmails": {
+      ".indexOn": ["timestamp", "email"],
+      ".read": true,
+      ".write": true
+    },
+    "emailsByDomain": {
+      ".read": true,
+      ".write": true
+    }
+  }
+}
+  `);
+  
+  console.log("Instructions to setup Firebase rules:");
+  console.log("1. Go to Firebase Console: https://console.firebase.google.com/project/leadspark160104/database");
+  console.log("2. Select 'Rules' tab");
+  console.log("3. Update the rules to match the structure above");
+  console.log("4. Click 'Publish'");
 };
 
-// This function will check database permissions
-window.testDatabasePermissions = async function() {
-    try {
-        if (!window.firebaseDatabase) {
-            console.error("Firebase database not initialized globally");
-            return { success: false, error: "Firebase database not available" };
-        }
-        
-        // Import required functions dynamically
-        const { ref, set, push, get } = await import("https://www.gstatic.com/firebasejs/11.7.3/firebase-database.js");
-        
-        // Test write to root
-        console.log("Testing write to root...");
-        try {
-            await set(ref(window.firebaseDatabase, 'test_permission'), { 
-                timestamp: new Date().toISOString(),
-                message: "Testing write permission to root"
-            });
-            console.log("✅ Write to root successful");
-        } catch (error) {
-            console.error("❌ Write to root failed:", error);
-            return { success: false, error: error.message, location: "root" };
-        }
-        
-        // Test read from root
-        console.log("Testing read from root...");
-        try {
-            const snapshot = await get(ref(window.firebaseDatabase, 'test_permission'));
-            console.log("✅ Read from root successful:", snapshot.exists() ? snapshot.val() : "No data");
-        } catch (error) {
-            console.error("❌ Read from root failed:", error);
-            return { success: false, error: error.message, location: "root read" };
-        }
-        
-        // Test write to validEmails node
-        console.log("Testing write to validEmails node...");
-        try {
-            const validEmailsRef = ref(window.firebaseDatabase, 'validEmails');
-            const newEmailRef = push(validEmailsRef);
-            await set(newEmailRef, {
-                email: "permission_test@example.com",
-                status: "Valid",
-                detail: "Testing permissions",
-                timestamp: new Date().toISOString()
-            });
-            console.log("✅ Write to validEmails successful");
-        } catch (error) {
-            console.error("❌ Write to validEmails failed:", error);
-            return { success: false, error: error.message, location: "validEmails" };
-        }
-        
-        return { success: true, message: "All permission tests passed" };
-    } catch (error) {
-        console.error("Error during test:", error);
-        return { success: false, error: error.message };
-    }
-};
-
-console.log("Firebase rules helper loaded. You can run checkFirebaseConnection() or testDatabasePermissions() from the console."); 
+export {
+  generateFirebaseRules,
+  showRulesInConsole,
+  testFirebaseRules
+}; 
