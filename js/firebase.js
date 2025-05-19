@@ -171,19 +171,26 @@ async function storeValidEmail(emailData) {
       return false;
     }
     
+    console.log(`Storing email in Firebase: ${emailData.email}, status: ${emailData.status}, source: ${emailData.source || 'unknown'}`);
+    
     const normalizedEmail = normalizeEmail(emailData.email);
     const emailDomain = getDomainFromEmail(normalizedEmail);
     const isTest = isTestEmail(normalizedEmail);
     
+    console.log(`Email domain: ${emailDomain}, isTest: ${isTest}`);
+    
     // Organize by domain: domains/{domain}/emails/{emailId}
     // Or for test emails: test_emails/{emailId}
     const storePath = isTest ? 'test_emails' : `domains/${emailDomain}/emails`;
+    
+    console.log(`Using store path: ${storePath}`);
     
     // Before storing, check if this email already exists in this domain
     const domainEmailsRef = ref(database, storePath);
     
     try {
       const existingEmailsSnapshot = await get(domainEmailsRef);
+      console.log(`Checking for duplicates in ${storePath}`);
       
       // Check if the email already exists
       if (existingEmailsSnapshot.exists()) {
@@ -208,9 +215,12 @@ async function storeValidEmail(emailData) {
         if (isDuplicate) {
           return true; // Email already exists, no need to add again
         }
+      } else {
+        console.log(`No existing emails found in ${storePath}, will create new entry`);
       }
       
       // Email doesn't exist, add it
+      console.log(`Creating new entry for email: ${normalizedEmail}`);
       const newEmailRef = push(domainEmailsRef);
       
       // Add additional metadata
@@ -238,6 +248,10 @@ async function storeValidEmail(emailData) {
       
     } catch (accessError) {
       console.error('Firebase database access error:', accessError);
+      // Show Firebase rules instructions
+      if (typeof showFirebaseRulesInstructions === 'function') {
+        showFirebaseRulesInstructions();
+      }
       // Try to write to the root instead to test permissions
       await set(ref(database, 'accessTest'), { timestamp: new Date().toISOString() });
       return false;

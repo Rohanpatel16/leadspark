@@ -4,7 +4,7 @@
 
 import { callValidateEmailAPI, mapApiResponseToStatusDetails, MAX_PARALLEL_REQUESTS_PER_CHUNK } from './api.js';
 import { showCopiedFeedback } from './utils.js';
-import { storeMultipleValidEmails, getValidEmails } from './firebase.js';
+import { storeMultipleValidEmails, getValidEmails, storeValidEmail } from './firebase.js';
 
 // Module variables
 let bulkVerifierForm;
@@ -48,7 +48,8 @@ async function actualVerifyBatchEmails(emailsToVerify) {
                 email: email, 
                 status: statusInfo.status, 
                 detail: statusInfo.detail, 
-                timestamp: new Date().toISOString() 
+                timestamp: new Date().toISOString(),
+                source: 'verifier' // Add source tracking
             });
         });
         
@@ -99,10 +100,22 @@ function initEmailVerifierScripts() {
             currentLog.unshift(...verificationResults); 
             localStorage.setItem('leadSparkVerificationLog', JSON.stringify(currentLog));
             
-            // Store valid emails in Firebase
-            storeMultipleValidEmails(verificationResults)
-              .then(success => console.log('Firebase storage completed:', success ? 'Success' : 'Failed'))
-              .catch(err => console.error('Error storing emails in Firebase:', err));
+            // Store valid emails directly one by one to ensure they get saved
+            const validEmails = verificationResults.filter(result => result.status === 'Valid');
+            console.log(`Found ${validEmails.length} valid emails to store in Firebase`);
+            
+            // Process each valid email individually to ensure it gets stored
+            for (const result of validEmails) {
+                try {
+                    console.log(`Storing email in Firebase: ${result.email}`);
+                    await storeValidEmail({
+                        ...result,
+                        source: 'verifier'
+                    });
+                } catch (err) {
+                    console.error(`Error storing individual email ${result.email}:`, err);
+                }
+            }
 
             // Save valid emails locally
             let currentGlobalValidEmails = JSON.parse(localStorage.getItem('leadSparkAllValidEmails') || '[]');
@@ -122,11 +135,6 @@ function initEmailVerifierScripts() {
                     allVerifiedValidEmailsFromCurrentBatch.push(result.email);
                     if (!currentGlobalValidEmails.includes(result.email)) { 
                         currentGlobalValidEmails.push(result.email);
-                    }
-                    
-                    // Add source information when storing in Firebase
-                    if (!result.source) {
-                        result.source = 'verifier';
                     }
                 }
             });
