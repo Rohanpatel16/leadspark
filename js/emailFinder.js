@@ -3,7 +3,7 @@
  */
 
 import { callValidateEmailAPI, mapApiResponseToIsValid, MAX_PARALLEL_REQUESTS_PER_CHUNK } from './api.js';
-import { showCopiedFeedback } from './utils.js';
+import { showCopiedFeedback, extractDomain } from './utils.js';
 import { storeValidEmail } from './firebase.js';
 
 // Module variables
@@ -128,10 +128,42 @@ function initEmailFinderScripts() {
     copyAllValidButton = document.getElementById('copyAllValidButton');
     allFoundValidEmailsAcrossSearch = []; 
 
+    // Set up domain input handling
+    const domainInput = document.getElementById('finder-domain');
+    if (domainInput) {
+        // Remove helper text element and replace with instant domain extraction
+        domainInput.addEventListener('input', function() {
+            const inputValue = this.value.trim();
+            if (inputValue) {
+                const extractedDomain = extractDomain(inputValue);
+                if (extractedDomain !== inputValue) {
+                    // Instantly replace with extracted domain
+                    this.value = extractedDomain;
+                }
+            }
+        });
+        
+        // Handle paste event specifically
+        domainInput.addEventListener('paste', function(e) {
+            // Short timeout to let the paste complete
+            setTimeout(() => {
+                const inputValue = this.value.trim();
+                if (inputValue) {
+                    const extractedDomain = extractDomain(inputValue);
+                    if (extractedDomain !== inputValue) {
+                        // Instantly replace with extracted domain
+                        this.value = extractedDomain;
+                    }
+                }
+            }, 10);
+        });
+    }
+
     if (bulkFinderForm) {
         bulkFinderForm.addEventListener('submit', async (event) => { 
             event.preventDefault(); 
-            const domain = document.getElementById('finder-domain').value.trim();
+            const domainInput = document.getElementById('finder-domain').value.trim();
+            const domain = extractDomain(domainInput);
             const namesText = document.getElementById('finder-names').value.trim();
             if (!domain || !namesText) { 
                 alert('Please enter both a domain and a list of names.'); 

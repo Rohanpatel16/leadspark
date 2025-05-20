@@ -16,6 +16,55 @@ function showCopiedFeedback(buttonElement) {
     }, 1500);
 }
 
+/**
+ * Extract all email addresses from any text
+ * @param {string} text - The input text which may contain multiple emails in various formats
+ * @returns {string[]} Array of extracted email addresses
+ */
+function extractEmails(text) {
+    if (!text) return [];
+    
+    // First, normalize line breaks and common separators
+    text = text.replace(/[\r\n,;]+/g, ' ');
+    
+    // Email regex pattern - matches standard email format
+    const emailPattern = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
+    
+    // Extract all emails
+    const emails = text.match(emailPattern) || [];
+    
+    // Remove duplicates and clean up
+    return [...new Set(emails.map(email => email.trim()))];
+}
+
+/**
+ * Extract the domain from a string that could be a URL, email, or domain
+ * @param {string} input - The input string which could be formatted as a URL, email, or plain domain
+ * @returns {string} The extracted domain name
+ */
+function extractDomain(input) {
+    if (!input) return '';
+    
+    // Remove leading @ if present
+    input = input.trim().replace(/^@/, '');
+    
+    // Extract domain from email address (if it is an email)
+    if (input.includes('@') && !input.startsWith('http')) {
+        input = input.split('@')[1];
+    }
+    
+    // Remove protocol (http://, https://, etc.)
+    input = input.replace(/^(?:https?:\/\/)?(?:www\.)?/i, '');
+    
+    // Remove trailing slash and anything after it
+    input = input.split('/')[0];
+    
+    // Remove any query parameters or hash fragments
+    input = input.split('?')[0].split('#')[0];
+    
+    return input;
+}
+
 // --- Common JS: Theme Toggle, Navbar Toggle, Set Current Year ---
 function applyTheme(theme) {
     if (theme === 'dark') {
@@ -87,6 +136,8 @@ function setCurrentYear() {
 // Export utilities for modules
 export {
     showCopiedFeedback,
+    extractEmails,
+    extractDomain,
     applyTheme,
     setupTheme,
     setupNavbarToggle,

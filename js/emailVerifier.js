@@ -3,7 +3,7 @@
  */
 
 import { callValidateEmailAPI, mapApiResponseToStatusDetails, MAX_PARALLEL_REQUESTS_PER_CHUNK } from './api.js';
-import { showCopiedFeedback } from './utils.js';
+import { showCopiedFeedback, extractEmails } from './utils.js';
 import { storeMultipleValidEmails, getValidEmails } from './firebase.js';
 
 // Module variables
@@ -70,19 +70,66 @@ function initEmailVerifierScripts() {
     copyValidVerifiedButton = document.getElementById('copyValidVerifiedButton');
     allVerifiedValidEmailsFromCurrentBatch = [];
 
+    // Add paste event handler to automatically extract emails
+    const emailsTextarea = document.getElementById('verifier-emails');
+    if (emailsTextarea) {
+        // Add helper text element after the textarea
+        const emailHelperText = document.createElement('small');
+        emailHelperText.className = 'form-text text-muted email-helper';
+        emailHelperText.style.display = 'none';
+        emailsTextarea.parentNode.insertBefore(emailHelperText, emailsTextarea.nextSibling);
+        
+        // Function to extract emails
+        const extractEmailsFromText = () => {
+            const inputText = emailsTextarea.value;
+            if (!inputText) return;
+            
+            const extractedEmails = extractEmails(inputText);
+            if (extractedEmails.length > 0) {
+                // Replace textarea content with properly formatted emails
+                emailsTextarea.value = extractedEmails.join('\n');
+                
+                // Show feedback
+                emailHelperText.textContent = `Extracted ${extractedEmails.length} email(s)`;
+                emailHelperText.style.display = 'block';
+                
+                // Hide feedback after 3 seconds
+                setTimeout(() => {
+                    emailHelperText.style.display = 'none';
+                }, 3000);
+            }
+        };
+        
+        // Extract on paste only
+        emailsTextarea.addEventListener('paste', function(e) {
+            // Short timeout to let the paste complete
+            setTimeout(extractEmailsFromText, 10);
+        });
+    }
+
     if (bulkVerifierForm) {
         bulkVerifierForm.addEventListener('submit', async (event) => {
             event.preventDefault();
-            const emailsText = document.getElementById('verifier-emails').value.trim();
+            
+            // Extract emails from text right before submission
+            const emailsTextarea = document.getElementById('verifier-emails');
+            const emailsText = emailsTextarea.value.trim();
+            
             if (!emailsText) { 
                 alert('Please enter at least one email to verify.'); 
                 return; 
             }
-            const emailsArray = [...new Set(emailsText.split('\n').map(email => email.trim()).filter(email => email !== ''))]; 
+            
+            // Use the extractEmails function to get all emails from text
+            const emailsArray = extractEmails(emailsText);
+            
             if (emailsArray.length === 0) { 
-                alert('Please enter valid email addresses.'); 
+                alert('No valid email addresses found in the input.'); 
                 return; 
             }
+
+            // Show extracted emails in the textarea in a clean format
+            emailsTextarea.value = emailsArray.join('\n');
 
             verifierResultsTableBody.innerHTML = ''; 
             verifierResultsTable.style.display = 'none';
