@@ -5,7 +5,11 @@ LeadSpark is a comprehensive email finding and verification tool that helps you 
 ## Features
 
 - **Email Finder:** Generate and verify email permutations based on names and domains
+  - **Smart Domain Extraction:** Automatically extracts domains from URLs, emails, or text (e.g., `@http://example.com/` → `example.com`)
+  - **Instant Formatting:** Clean domain display as you type or paste
 - **Email Verifier:** Check the validity of email addresses using API validation
+  - **Bulk Email Extraction:** Intelligently extracts emails from any text, even with mixed formats
+  - **Auto-Formatting:** Automatically formats pasted emails one per line
 - **Dashboard:** View stats and manage your validated emails
 - **Validation Log:** Complete history of your email verification activities
 - **Settings:** Configure API settings for email validation services
@@ -16,6 +20,19 @@ LeadSpark is a comprehensive email finding and verification tool that helps you 
 - HTML/CSS
 - LocalStorage for data persistence
 - Support for multiple email validation APIs
+
+## Key Features in Detail
+
+### Smart Domain Handling
+- Paste any URL format (http://example.com, www.example.com) and get just the domain
+- Extract domains from email addresses (user@example.com → example.com)
+- Remove common prefixes and suffixes automatically
+
+### Intelligent Email Extraction
+- Paste emails in any format: comma-separated, line breaks, or mixed with text
+- Extract email addresses from messy text or HTML
+- Automatically formats extracted emails one per line
+- Removes duplicates and validates format
 
 ## Deployment
 
@@ -33,8 +50,9 @@ The application will be live at a URL like `https://your-site-name.netlify.app`
 ## Local Development
 
 1. Clone this repository
-2. Open index.html in your browser
-3. Make changes to files in the `/css` and `/js` directories
+2. Install dependencies: `npm install`
+3. Run local server: `npx serve -l 5000 .`
+4. Or simply open index.html in your browser
 
 ## API Integration
 
