@@ -181,24 +181,37 @@ function loadHomeActivity() {
         const timestamp = document.createElement('span');
         timestamp.className = 'timestamp';
         
-        // Format the timestamp relative to now (e.g., "2 hours ago")
+        // Format the timestamp more accurately
         const activityDate = new Date(activity.timestamp);
         const now = new Date();
-        const diffMs = now - activityDate;
+        
+        // Reset time components to compare just the dates
+        const activityDateOnly = new Date(activityDate.getFullYear(), activityDate.getMonth(), activityDate.getDate());
+        const todayDateOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const yesterdayDateOnly = new Date(todayDateOnly);
+        yesterdayDateOnly.setDate(yesterdayDateOnly.getDate() - 1);
+        
+        // Calculate difference in days
+        const diffMs = todayDateOnly - activityDateOnly;
         const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
         
-        if (diffDays === 0) {
-            const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+        if (activityDateOnly.getTime() === todayDateOnly.getTime()) {
+            // Today - show hours/minutes
+            const diffHours = Math.floor((now - activityDate) / (1000 * 60 * 60));
             if (diffHours === 0) {
-                const diffMinutes = Math.floor(diffMs / (1000 * 60));
+                const diffMinutes = Math.floor((now - activityDate) / (1000 * 60));
                 timestamp.textContent = `${diffMinutes} ${diffMinutes === 1 ? 'minute' : 'minutes'} ago`;
             } else {
                 timestamp.textContent = `${diffHours} ${diffHours === 1 ? 'hour' : 'hours'} ago`;
             }
-        } else if (diffDays === 1) {
+        } else if (activityDateOnly.getTime() === yesterdayDateOnly.getTime()) {
             timestamp.textContent = 'Yesterday';
         } else {
-            timestamp.textContent = `${diffDays} days ago`;
+            // Format the date with month and day
+            timestamp.textContent = activityDate.toLocaleDateString(undefined, { 
+                month: 'short', 
+                day: 'numeric' 
+            });
         }
         
         activityItem.appendChild(activityText);

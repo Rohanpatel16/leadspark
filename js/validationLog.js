@@ -148,6 +148,82 @@ async function displayConsolidatedDomains() {
 }
 
 /**
+ * Create a log entry row for display
+ * @param {Object} entry - The log entry data
+ * @returns {HTMLTableRowElement} - The created table row
+ */
+function createLogEntryRow(entry) {
+    const row = document.createElement('tr');
+    
+    // Email cell
+    const emailCell = document.createElement('td');
+    emailCell.textContent = entry.email;
+    row.appendChild(emailCell);
+    
+    // Status cell
+    const statusCell = document.createElement('td');
+    statusCell.className = 'status-cell';
+    const statusSpan = document.createElement('span');
+    statusSpan.className = `status-${entry.status.toLowerCase()}`;
+    statusSpan.textContent = entry.status;
+    statusCell.appendChild(statusSpan);
+    row.appendChild(statusCell);
+    
+    // Details cell
+    const detailsCell = document.createElement('td');
+    detailsCell.textContent = entry.detail || '—';
+    row.appendChild(detailsCell);
+    
+    // Source cell
+    const sourceCell = document.createElement('td');
+    sourceCell.className = 'source-cell';
+    if (entry.source) {
+        const sourceBadge = document.createElement('span');
+        sourceBadge.className = `source-badge ${entry.source}`;
+        sourceBadge.textContent = entry.source === 'finder' ? 'Finder' : 'Verifier';
+        sourceCell.appendChild(sourceBadge);
+    } else {
+        sourceCell.textContent = '—';
+    }
+    row.appendChild(sourceCell);
+    
+    // Date cell
+    const dateCell = document.createElement('td');
+    if (entry.timestamp) {
+        const date = new Date(entry.timestamp);
+        const now = new Date();
+        
+        // Reset time components to compare just the dates
+        const activityDateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+        const todayDateOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const yesterdayDateOnly = new Date(todayDateOnly);
+        yesterdayDateOnly.setDate(yesterdayDateOnly.getDate() - 1);
+        
+        if (activityDateOnly.getTime() === todayDateOnly.getTime()) {
+            // Today - show time
+            dateCell.textContent = `Today, ${date.toLocaleTimeString(undefined, {
+                hour: '2-digit',
+                minute: '2-digit'
+            })}`;
+        } else if (activityDateOnly.getTime() === yesterdayDateOnly.getTime()) {
+            // Yesterday - show with time
+            dateCell.textContent = `Yesterday, ${date.toLocaleTimeString(undefined, {
+                hour: '2-digit',
+                minute: '2-digit'
+            })}`;
+        } else {
+            // Other date - show full date and time
+            dateCell.textContent = formatDate(entry.timestamp);
+        }
+    } else {
+        dateCell.textContent = 'Unknown';
+    }
+    row.appendChild(dateCell);
+    
+    return row;
+}
+
+/**
  * Render validation log table with data
  * @param {Array<Object>} logEntries - Log entries to display
  */
@@ -316,7 +392,30 @@ async function loadAndDisplayLog() {
       const dateCell = row.insertCell();
       if (entry.timestamp) {
         const date = new Date(entry.timestamp);
-        dateCell.textContent = date.toLocaleString();
+        const now = new Date();
+        
+        // Reset time components to compare just the dates
+        const activityDateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+        const todayDateOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const yesterdayDateOnly = new Date(todayDateOnly);
+        yesterdayDateOnly.setDate(yesterdayDateOnly.getDate() - 1);
+        
+        if (activityDateOnly.getTime() === todayDateOnly.getTime()) {
+            // Today - show time
+            dateCell.textContent = `Today, ${date.toLocaleTimeString(undefined, {
+                hour: '2-digit',
+                minute: '2-digit'
+            })}`;
+        } else if (activityDateOnly.getTime() === yesterdayDateOnly.getTime()) {
+            // Yesterday - show with time
+            dateCell.textContent = `Yesterday, ${date.toLocaleTimeString(undefined, {
+                hour: '2-digit',
+                minute: '2-digit'
+            })}`;
+        } else {
+            // Other date - show full date and time
+            dateCell.textContent = formatDate(entry.timestamp);
+        }
       } else {
         dateCell.textContent = 'Unknown';
       }
