@@ -474,12 +474,31 @@ img { max-width: 100%; height: auto; display: block; }
 
 /* Footer */
 .footer {
-    padding: 40px 0;
-    background-color: var(--color-surface); 
+    background-color: var(--color-bg-alt);
+    padding: 30px 0;
+    margin-top: 40px;
     border-top: 1px solid var(--color-border);
     text-align: center;
-    margin-top: auto; 
+    margin-top: auto;
 }
+
+.footer-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.footer-brand {
+    text-align: left;
+}
+
+.footer-links {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
 .footer p { margin-bottom: 0.5rem; font-size: 0.9rem; color: var(--color-text-muted); }
 .footer .navbar-brand { font-size: 1.5rem; display: inline-block; margin-bottom: 0.5rem;}
 
@@ -542,6 +561,24 @@ img { max-width: 100%; height: auto; display: block; }
     #validationLogTable td.status-cell span { font-size: 0.8em; }
     .log-controls { flex-direction: column; align-items: stretch;}
     .log-controls > div { margin-bottom: 0.5rem; }
+
+    .footer-content {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .footer-brand {
+        text-align: center;
+        margin-bottom: 15px;
+    }
+    
+    .footer-links {
+        flex-direction: column;
+    }
+    
+    .linkedin-link {
+        margin-top: 10px;
+    }
 } 
 
 /* No activity message styling */
@@ -644,4 +681,84 @@ img { max-width: 100%; height: auto; display: block; }
 
 .content-article li:last-child {
     margin-bottom: 0;
+}
+
+/* LinkedIn Button Styles */
+.linkedin-link {
+  display: inline-block;
+  margin-left: 15px;
+  vertical-align: middle;
+}
+
+.Btn {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 45px;
+  height: 45px;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition-duration: 0.3s;
+  box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.199);
+  background-color: #0a66c2;
+}
+
+.sign {
+  width: 100%;
+  transition-duration: 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sign svg {
+  width: 25px;
+}
+
+.sign svg path {
+  fill: white;
+}
+.text {
+  position: absolute;
+  right: 0%;
+  width: 0%;
+  opacity: 0;
+  color: white;
+  font-size: 1.2em;
+  font-weight: 600;
+  transition-duration: 0.3s;
+}
+
+.Btn:hover {
+  width: 135px;
+  border-radius: 40px;
+  transition-duration: 0.3s;
+}
+
+.Btn:hover .sign {
+  width: 30%;
+  transition-duration: 0.3s;
+  padding-left: 10px;
+}
+
+.Btn:hover .text {
+  opacity: 1;
+  width: 70%;
+  transition-duration: 0.3s;
+  padding-right: 10px;
+}
+.Btn:active {
+  transform: translate(2px, 2px);
+}
+
+/* Media query for responsive footer */
+@media (max-width: 768px) {
+  .linkedin-link {
+    display: block;
+    margin-left: 0;
+    margin-top: 15px;
+  }
 } 
