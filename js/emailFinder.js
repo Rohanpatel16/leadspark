@@ -13,6 +13,7 @@ let resultsTable;
 let resultsTableBody;
 let copyAllValidButton;
 let allFoundValidEmailsAcrossSearch = [];
+let catchAllWarningDiv;
 
 /**
  * Generate email permutations based on name and domain
@@ -95,16 +96,7 @@ async function processPermutationsWithAPI(allPermutations) {
                 const isValid = mapApiResponseToIsValid(apiCallResult.apiData);
                 allResults.push({ email: apiCallResult.originalEmail, isValid: isValid });
                 
-                // Store valid emails in Firebase
-                if (isValid) {
-                    storeValidEmail({
-                        email: apiCallResult.originalEmail,
-                        status: 'Valid',
-                        detail: 'Found by Email Finder',
-                        timestamp: new Date().toISOString(),
-                        source: 'finder'
-                    }).catch(err => console.error('Error storing finder email in Firebase:', err));
-                }
+                // We'll store valid emails later after checking for catch-all domains
             } else {
                 console.error(`API call rejected for one email in finder:`, settledResult.reason);
             }
@@ -118,6 +110,76 @@ async function processPermutationsWithAPI(allPermutations) {
 }
 
 /**
+ * Check if all patterns for all names are valid, which might indicate a catch-all domain
+ * @param {Array} namesArray - Array of names that were checked
+ * @param {Object} resultsByFullName - Object mapping names to arrays of valid emails
+ * @param {Array} totalPermutationsToProcess - Array of all email permutations that were checked
+ * @returns {boolean} - True if all patterns for all names are valid
+ */
+function shouldShowCatchAllWarning(namesArray, resultsByFullName, totalPermutationsToProcess) {
+    // Get the total number of permutations and valid emails
+    const totalPermutations = totalPermutationsToProcess.length;
+    
+    if (totalPermutations === 0) {
+        return false;
+    }
+    
+    // Count how many valid emails we found in total
+    let totalValidEmails = 0;
+    for (const name of namesArray) {
+        totalValidEmails += resultsByFullName[name].length;
+    }
+    
+    // Calculate the ratio of valid emails to total permutations
+    const validRatio = totalValidEmails / totalPermutations;
+    
+    // If we have multiple names, check if all names have valid emails
+    if (namesArray.length >= 2) {
+        const allEmailsValid = Object.values(resultsByFullName).every(emails => emails.length > 0);
+        return allEmailsValid && validRatio > 0.8; // 80% or more are valid
+    } 
+    
+    // For a single name, check if a high percentage of patterns are valid
+    // This indicates a potential catch-all domain
+    else if (namesArray.length === 1) {
+        const name = namesArray[0];
+        const validEmailsForName = resultsByFullName[name].length;
+        const totalPatternsForName = totalPermutationsToProcess.filter(p => p.name === name).length;
+        
+        // If more than 80% of patterns are valid for this name, it's suspicious
+        return validEmailsForName > 0 && (validEmailsForName / totalPatternsForName) > 0.8;
+    }
+    
+    return false;
+}
+
+/**
+ * Display a warning about potential catch-all domain
+ * @param {string} domain - The domain that might be a catch-all
+ * @param {boolean} isSingleName - Whether this is for a single name or multiple names
+ */
+function displayCatchAllWarning(domain, isSingleName = false) {
+    if (!catchAllWarningDiv) {
+        return;
+    }
+    
+    const message = isSingleName
+        ? `<div class="warning-message">
+            <strong>⚠️ Warning:</strong> All or most email patterns for this name are returning as valid. 
+            The domain <strong>${domain}</strong> might be a catch-all domain, which means none of these emails may actually be valid or deliverable.
+            We recommend double-checking these results with another method before using these addresses.
+        </div>`
+        : `<div class="warning-message">
+            <strong>⚠️ Warning:</strong> All or most email patterns for all names are returning as valid. 
+            The domain <strong>${domain}</strong> might be a catch-all domain, which means none of these emails may actually be valid or deliverable.
+            We recommend double-checking these results with another method before using these addresses.
+        </div>`;
+    
+    catchAllWarningDiv.innerHTML = message;
+    catchAllWarningDiv.style.display = 'block';
+}
+
+/**
  * Initialize email finder functionality
  */
 function initEmailFinderScripts() {
@@ -126,6 +188,7 @@ function initEmailFinderScripts() {
     resultsTable = document.getElementById('resultsTable');
     resultsTableBody = document.getElementById('resultsTableBody');
     copyAllValidButton = document.getElementById('copyAllValidButton');
+    catchAllWarningDiv = document.getElementById('catch-all-warning');
     allFoundValidEmailsAcrossSearch = []; 
 
     // Set up domain input handling
@@ -180,6 +243,11 @@ function initEmailFinderScripts() {
             copyAllValidButton.style.display = 'none'; 
             allFoundValidEmailsAcrossSearch = []; 
             
+            // Hide catch-all warning if it exists
+            if (catchAllWarningDiv) {
+                catchAllWarningDiv.style.display = 'none';
+            }
+            
             let totalPermutationsToProcess = [];
             for (const fullName of namesArray) {
                 const nameParts = fullName.split(' ');
@@ -218,41 +286,52 @@ function initEmailFinderScripts() {
                 });
             });
             
-            // Add all valid emails to localStorage
-            const currentStoredEmails = JSON.parse(localStorage.getItem('leadSparkAllValidEmails') || '[]');
-            const newUniqueValidEmails = allFoundValidEmailsAcrossSearch.filter(email => !currentStoredEmails.includes(email));
-            if (newUniqueValidEmails.length > 0) {
-                currentStoredEmails.push(...newUniqueValidEmails);
-                localStorage.setItem('leadSparkAllValidEmails', JSON.stringify(currentStoredEmails));
+            // Check if this might be a catch-all domain and display warning if needed
+            const isCatchAllDomain = shouldShowCatchAllWarning(namesArray, resultsByFullName, totalPermutationsToProcess);
+            if (isCatchAllDomain) {
+                displayCatchAllWarning(domain, namesArray.length === 1);
             }
             
-            // Store all valid emails in Firebase with additional metadata
-            const validEmailsWithContext = allFoundValidEmailsAcrossSearch.map(email => {
-                // Find which name this email belongs to for better context
-                const matchingNameEntry = totalPermutationsToProcess.find(p => p.email === email);
-                return {
-                    email: email,
-                    status: 'Valid',
-                    detail: `Found by Email Finder for ${matchingNameEntry ? matchingNameEntry.name : 'unknown name'}`,
-                    timestamp: new Date().toISOString(),
-                    source: 'finder',
-                    searchDomain: domain
-                };
-            });
-            
-            // Process in batches to avoid overwhelming Firebase
-            const storeBatches = async (emailsData, batchSize = 10) => {
-                for (let i = 0; i < emailsData.length; i += batchSize) {
-                    const batch = emailsData.slice(i, i + batchSize);
-                    const promises = batch.map(emailData => storeValidEmail(emailData));
-                    await Promise.all(promises).catch(err => console.error('Error storing batch of finder emails:', err));
+            // Only save emails if it's not a catch-all domain
+            if (!isCatchAllDomain) {
+                // Add all valid emails to localStorage
+                const currentStoredEmails = JSON.parse(localStorage.getItem('leadSparkAllValidEmails') || '[]');
+                const newUniqueValidEmails = allFoundValidEmailsAcrossSearch.filter(email => !currentStoredEmails.includes(email));
+                if (newUniqueValidEmails.length > 0) {
+                    currentStoredEmails.push(...newUniqueValidEmails);
+                    localStorage.setItem('leadSparkAllValidEmails', JSON.stringify(currentStoredEmails));
                 }
-            };
-            
-            // Store all valid emails in Firebase in the background
-            storeBatches(validEmailsWithContext)
-                .then(() => console.log(`Successfully stored ${validEmailsWithContext.length} valid emails from finder in Firebase`))
-                .catch(err => console.error('Error in batch storing emails from finder:', err));
+                
+                // Store all valid emails in Firebase with additional metadata
+                const validEmailsWithContext = allFoundValidEmailsAcrossSearch.map(email => {
+                    // Find which name this email belongs to for better context
+                    const matchingNameEntry = totalPermutationsToProcess.find(p => p.email === email);
+                    return {
+                        email: email,
+                        status: 'Valid',
+                        detail: `Found by Email Finder for ${matchingNameEntry ? matchingNameEntry.name : 'unknown name'}`,
+                        timestamp: new Date().toISOString(),
+                        source: 'finder',
+                        searchDomain: domain
+                    };
+                });
+                
+                // Process in batches to avoid overwhelming Firebase
+                const storeBatches = async (emailsData, batchSize = 10) => {
+                    for (let i = 0; i < emailsData.length; i += batchSize) {
+                        const batch = emailsData.slice(i, i + batchSize);
+                        const promises = batch.map(emailData => storeValidEmail(emailData));
+                        await Promise.all(promises).catch(err => console.error('Error storing batch of finder emails:', err));
+                    }
+                };
+                
+                // Store all valid emails in Firebase in the background
+                storeBatches(validEmailsWithContext)
+                    .then(() => console.log(`Successfully stored ${validEmailsWithContext.length} valid emails from finder in Firebase`))
+                    .catch(err => console.error('Error in batch storing emails from finder:', err));
+            } else {
+                console.log('Emails not saved due to catch-all domain detection');
+            }
             
             for (const fullName of namesArray) {
                 const validEmailsForThisName = resultsByFullName[fullName] || [];

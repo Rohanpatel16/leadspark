@@ -570,3 +570,18 @@ img { max-width: 100%; height: auto; display: block; }
     from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
 } 
+
+/* Warning Message Styles */
+.warning-message {
+    background-color: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeeba;
+    border-radius: 4px;
+    padding: 12px 15px;
+    margin-bottom: 15px;
+    line-height: 1.5;
+}
+
+.warning-message strong {
+    margin-right: 5px;
+} 
