@@ -133,21 +133,29 @@ function shouldShowCatchAllWarning(namesArray, resultsByFullName, totalPermutati
     // Calculate the ratio of valid emails to total permutations
     const validRatio = totalValidEmails / totalPermutations;
     
-    // If we have multiple names, check if all names have valid emails
-    if (namesArray.length >= 2) {
-        const allEmailsValid = Object.values(resultsByFullName).every(emails => emails.length > 0);
-        return allEmailsValid && validRatio > 0.8; // 80% or more are valid
-    } 
-    
-    // For a single name, check if a high percentage of patterns are valid
-    // This indicates a potential catch-all domain
-    else if (namesArray.length === 1) {
+    // For a single name
+    if (namesArray.length === 1) {
         const name = namesArray[0];
         const validEmailsForName = resultsByFullName[name].length;
         const totalPatternsForName = totalPermutationsToProcess.filter(p => p.name === name).length;
         
-        // If more than 80% of patterns are valid for this name, it's suspicious
-        return validEmailsForName > 0 && (validEmailsForName / totalPatternsForName) > 0.8;
+        // If at least 5 patterns are valid or more than 80% are valid, it's suspicious
+        return (validEmailsForName >= 5) || 
+               (totalPatternsForName > 2 && validEmailsForName / totalPatternsForName > 0.8);
+    } 
+    // For multiple names
+    else if (namesArray.length >= 2) {
+        // Get names with valid emails (at least 3 or 80% of patterns)
+        const namesWithSignificantValidEmails = namesArray.filter(name => {
+            const validEmails = resultsByFullName[name].length;
+            const totalPatterns = totalPermutationsToProcess.filter(p => p.name === name).length;
+            return validEmails >= 3 || (totalPatterns > 0 && validEmails / totalPatterns > 0.7);
+        });
+        
+        // If most names have significant valid emails and the overall valid ratio is high
+        const mostNamesHaveValidEmails = namesWithSignificantValidEmails.length >= (namesArray.length * 0.6);
+        
+        return mostNamesHaveValidEmails && validRatio > 0.7;
     }
     
     return false;
@@ -166,13 +174,21 @@ function displayCatchAllWarning(domain, isSingleName = false) {
     const message = isSingleName
         ? `<div class="warning-message">
             <strong>⚠️ Warning:</strong> All or most email patterns for this name are returning as valid. 
-            The domain <strong>${domain}</strong> might be a catch-all domain, which means none of these emails may actually be valid or deliverable.
-            We recommend double-checking these results with another method before using these addresses.
+            The domain <strong>${domain}</strong> appears to be a catch-all domain that accepts all incoming email addresses.
+            <ul>
+                <li>These emails are shown for reference but have <strong>not been saved</strong> to your database.</li>
+                <li>Catch-all domains will respond positively to all email validation attempts, even for nonexistent addresses.</li>
+                <li>Using these emails could result in high bounce rates and harm your sender reputation.</li>
+            </ul>
         </div>`
         : `<div class="warning-message">
-            <strong>⚠️ Warning:</strong> All or most email patterns for all names are returning as valid. 
-            The domain <strong>${domain}</strong> might be a catch-all domain, which means none of these emails may actually be valid or deliverable.
-            We recommend double-checking these results with another method before using these addresses.
+            <strong>⚠️ Warning:</strong> Multiple names are showing valid email patterns. 
+            The domain <strong>${domain}</strong> appears to be a catch-all domain that accepts all incoming email addresses.
+            <ul>
+                <li>These emails are shown for reference but have <strong>not been saved</strong> to your database.</li>
+                <li>Catch-all domains will respond positively to all email validation attempts, even for nonexistent addresses.</li>
+                <li>Using these emails could result in high bounce rates and harm your sender reputation.</li>
+            </ul>
         </div>`;
     
     catchAllWarningDiv.innerHTML = message;
