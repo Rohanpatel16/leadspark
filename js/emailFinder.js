@@ -175,7 +175,7 @@ function displayCatchAllWarning(domain, isSingleName = false) {
         ? `<div class="warning-message">
             <strong>⚠️ Warning:</strong> All or most email patterns for this name are returning as valid. 
             The domain <strong>${domain}</strong> appears to be a catch-all domain that accepts all incoming email addresses.
-            <ul>
+            <ul class="warning-list">
                 <li>These emails are shown for reference but have <strong>not been saved</strong> to your database.</li>
                 <li>Catch-all domains will respond positively to all email validation attempts, even for nonexistent addresses.</li>
                 <li>Using these emails could result in high bounce rates and harm your sender reputation.</li>
@@ -184,7 +184,7 @@ function displayCatchAllWarning(domain, isSingleName = false) {
         : `<div class="warning-message">
             <strong>⚠️ Warning:</strong> Multiple names are showing valid email patterns. 
             The domain <strong>${domain}</strong> appears to be a catch-all domain that accepts all incoming email addresses.
-            <ul>
+            <ul class="warning-list">
                 <li>These emails are shown for reference but have <strong>not been saved</strong> to your database.</li>
                 <li>Catch-all domains will respond positively to all email validation attempts, even for nonexistent addresses.</li>
                 <li>Using these emails could result in high bounce rates and harm your sender reputation.</li>

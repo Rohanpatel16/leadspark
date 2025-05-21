@@ -584,4 +584,18 @@ img { max-width: 100%; height: auto; display: block; }
 
 .warning-message strong {
     margin-right: 5px;
+}
+
+.warning-message .warning-list {
+    margin: 8px 0 4px 20px;
+    padding-left: 15px;
+}
+
+.warning-message .warning-list li {
+    margin-bottom: 6px;
+    padding-left: 6px;
+}
+
+.warning-message .warning-list li:last-child {
+    margin-bottom: 0;
 } 
