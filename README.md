@@ -59,7 +59,6 @@ The application will be live at a URL like `https://your-site-name.netlify.app`
 The application supports multiple email validation APIs:
 - validate.email
 - Bazzigate
-- SuperSend
 
 Configure your preferred API and API key in the Settings section of the application.
 

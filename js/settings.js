@@ -95,9 +95,6 @@ function updateApiUrlForProvider() {
         case 'bazzigate':
             apiUrlInput.value = 'https://emailverifiers-backend.bazzigate.com/single-email-varification';
             break;
-        case 'supersend':
-            apiUrlInput.value = 'https://api.supersend.io/v1/verify-email';
-            break;
     }
     
     // Update the global API config

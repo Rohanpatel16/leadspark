@@ -39,9 +39,6 @@ async function callValidateEmailAPI(email) {
                 case 'validate-email':
                     fullApiUrl += `&api_key=${encodeURIComponent(apiKey)}`;
                     break;
-                case 'supersend':
-                    fullApiUrl += `&key=${encodeURIComponent(apiKey)}`;
-                    break;
                 // Bazzigate doesn't seem to use an API key in the query string
             }
         }
@@ -54,12 +51,6 @@ async function callValidateEmailAPI(email) {
                 break;
             case 'bazzigate':
                 headers = { 'accept': 'application/json' };
-                break;
-            case 'supersend':
-                headers = { 'accept': 'application/json' };
-                if (apiKey) {
-                    headers['Authorization'] = `Bearer ${apiKey}`;
-                }
                 break;
         }
         
@@ -115,10 +106,6 @@ function mapApiResponseToIsValid(apiResponseData) { // For Email Finder
         case 'bazzigate':
             // Bazzigate API returns { res: boolean, email: string }
             return apiResponseData.res === true;
-            
-        case 'supersend':
-            // SuperSend API
-            return apiResponseData.valid === true;
             
         default:
             return false;
@@ -227,30 +214,11 @@ function mapApiResponseToStatusDetails(apiResponseData) { // For Email Verifier
                 };
             }
             
-        case 'supersend':
-            // SuperSend API
-            if (apiResponseData.valid === true) {
-                return {
-                    status: 'Valid',
-                    detail: apiResponseData.message || 'Email address is valid and deliverable.'
-                };
-            } else {
-                // SuperSend has a special case for uncertain results
-                if (apiResponseData.message && apiResponseData.message.includes('Uncertain')) {
-                    return {
-                        status: 'Risky',
-                        detail: apiResponseData.message || 'Email validation is uncertain.'
-                    };
-                } else {
-                    return {
-                        status: 'Invalid',
-                        detail: apiResponseData.message || 'Email address is invalid or undeliverable.'
-                    };
-                }
-            }
-            
         default:
-            return { status: 'Unknown', detail: 'Unknown API provider.' };
+            return { 
+                status: 'Unknown', 
+                detail: 'Unsupported API provider or no result received.'
+            };
     }
 }
 
